@@ -10,7 +10,7 @@ from pymongo.cursor import Cursor
 
 app = Flask(__name__)
 
-CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority"
+CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
 database_name = "closingtime"
 password = "closingtime"
 
@@ -37,7 +37,8 @@ def index():
 def login():
     input = request.get_json()
     print(input)
-    record = db.donor_registration.find_one({'email':input['email']})
+    donor_reg = getCollectionName('donor___registration')
+    record = donor_reg.find_one({'email': input['email']})
     if record:
        if record['password'] == input['password']:
            data = dict(record).copy()
@@ -59,7 +60,7 @@ def login():
 def donor_registration():
     input = request.get_json()
 
-    user_collection = pymongo.collection.Collection(db, 'donor___registration')
+    # user_collection = pymongo.collection.Collection(db, 'donor___registration')
     donor_reg = getCollectionName('donor___registration')
 
     isEmailPresent = donor_reg.find_one({'email': input['email']})
