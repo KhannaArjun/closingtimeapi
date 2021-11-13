@@ -1,3 +1,5 @@
+import base64
+
 from flask import Flask, request
 from flask_mongoengine import MongoEngine
 from flask_pymongo import pymongo
@@ -16,6 +18,8 @@ password = "closingtime"
 
 client = pymongo.MongoClient(CONNECTION_STRING)
 db = client.get_database('closingtime')
+
+
 # user_collection = pymongo.collection.Collection(db, 'user_collection')
 #
 # # app.config['MONGODB_HOST'] = DB_URI
@@ -29,25 +33,28 @@ db = client.get_database('closingtime')
 def getCollectionName(col_name):
     return pymongo.collection.Collection(db, col_name)
 
-@app.route('/', methods= ['GET'])
+
+@app.route('/', methods=['GET'])
 def index():
     return "hello"
 
-@app.route('/login', methods= ['POST'])
+
+@app.route('/login', methods=['POST'])
 def login():
     input = request.get_json()
     print(input)
     donor_reg = getCollectionName('donor___registration')
     record = donor_reg.find_one({'email': input['email']})
     if record:
-       if record['password'] == input['password']:
-           data = dict(record).copy()
-           data.pop('_id')
-           data.update({'user_id': str(record['_id'])})
+        if record['password'] == input['password']:
+            data = dict(record).copy()
+            data.pop('_id')
+            data.pop('password')
+            data.update({'user_id': str(record['_id'])})
 
-           return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
-       else:
-           return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
+            return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+        else:
+            return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
 
     else:
         return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
@@ -64,33 +71,44 @@ def donor_registration():
     donor_reg = getCollectionName('donor___registration')
 
     isEmailPresent = donor_reg.find_one({'email': input['email']})
+    isMobilePresent = donor_reg.find_one({'contact_number': input['contact_number']})
     print(isEmailPresent)
 
     if isEmailPresent is not None:
-
+        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
+    if isMobilePresent is not None:
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
 
+    pwd = input['password'].encode("utf-8")
+    encoded = base64.b64encode(pwd)
+    print(encoded)
+    input['password'] = encoded
+
     obj = donor_reg.insert_one(input).inserted_id
-    data = {
-        "user_id": str(obj)
-    }
-    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+    print(obj)
+    print(input)
+    data = dict(input).copy()
+    data.pop('password')
+    data.pop('_id')
+    data.update({'user_id': str(obj)})
+    print(data)
+    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
 
 
 @app.route('/food_donor/add_food', methods=['POST'])
 def add_food():
     input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+    add_food_col.insert_one(input)
 
-    obj = add_food_model.AddFood(**input).save()
-
-    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
-
+    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
 
 @app.route('/food_donor/added_food_list', methods=['POST'])
 def added_food_list():
     input = request.get_json()
-    data = db.add_food.find({'user_id': str(input['user_id'])})
+    add_food_col = getCollectionName('add_food')
+    data = add_food_col.find({'user_id': str(input['user_id'])})
 
     foodList = []
     array = list(data)
