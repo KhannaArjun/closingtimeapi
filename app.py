@@ -1,5 +1,6 @@
 import base64
 
+from bson import ObjectId
 from flask import Flask, request
 from flask_mongoengine import MongoEngine
 from flask_pymongo import pymongo
@@ -9,6 +10,9 @@ from food_donor_model import add_food_model
 from utils import api_response
 from utils import constants
 from pymongo.cursor import Cursor
+import base64
+import bson
+from bson.binary import Binary
 
 app = Flask(__name__)
 
@@ -36,7 +40,7 @@ def getCollectionName(col_name):
 
 @app.route('/', methods=['GET'])
 def index():
-    return "hello"
+    return "Closing Time!"
 
 
 @app.route('/login', methods=['POST'])
@@ -61,6 +65,28 @@ def login():
 
 
 # *******************************************         donor           *****************************************************
+
+
+@app.route('/getUserProfile', methods=['POST'])
+def get_user_profile():
+    input = request.get_json()
+
+    donor_reg = getCollectionName('donor___registration')
+    print(ObjectId(input['user_id']))
+    print(input['user_id'])
+
+    isUserIdPresent = donor_reg.find_one({'_id': ObjectId(input['user_id'])})
+
+    if isUserIdPresent is None:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
+
+    print(isUserIdPresent)
+    data = dict(isUserIdPresent).copy()
+    data.pop('password')
+    data.pop('_id')
+    data.update({'user_id': str(isUserIdPresent['_id'])})
+    print(data)
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
 
 
 @app.route('/food_donor/registration', methods=['POST'])
@@ -97,8 +123,9 @@ def donor_registration():
 
 @app.route('/food_donor/add_food', methods=['POST'])
 def add_food():
-    input = request.get_json()
+    input = request.form
     add_food_col = getCollectionName('add_food')
+
     add_food_col.insert_one(input)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))

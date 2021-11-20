@@ -5,3 +5,4 @@ class Utils:
     user_exists = "User already exists"
     invalid_cred = "Invalid credentials"
     inserted = "Inserted"
+    no_user_found = "No user profile found"
