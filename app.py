@@ -123,7 +123,7 @@ def donor_registration():
 
 @app.route('/food_donor/add_food', methods=['POST'])
 def add_food():
-    input = request.form
+    input = request.get_json()
     add_food_col = getCollectionName('add_food')
 
     add_food_col.insert_one(input)
