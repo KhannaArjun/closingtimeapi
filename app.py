@@ -67,7 +67,7 @@ def login():
 # *******************************************         donor           *****************************************************
 
 
-@app.route('/getUserProfile', methods=['POST'])
+@app.route('/food_donor/getUserProfile', methods=['POST'])
 def get_user_profile():
     input = request.get_json()
 
