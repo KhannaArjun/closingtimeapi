@@ -50,7 +50,9 @@ def login():
     donor_reg = getCollectionName('donor___registration')
     record = donor_reg.find_one({'email': input['email']})
     if record:
-        if record['password'] == input['password']:
+        pwd = base64.b64decode(record['password']).decode('utf-8')
+        print(pwd)
+        if pwd == input['password']:
             data = dict(record).copy()
             data.pop('_id')
             data.pop('password')
@@ -62,6 +64,22 @@ def login():
 
     else:
         return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
+
+
+@app.route('/isUserExists', methods=['POST'])
+def isUserExists():
+    input = request.get_json()
+    print(input)
+    donor_reg = getCollectionName('donor___registration')
+    record = donor_reg.find_one({'email': input['email']})
+    if record:
+        data = dict(record).copy()
+        print(data)
+        data.update({'user_id': record['user_id']})
+        print(data)
+        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
+    else:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.new_user, False, {}))
 
 
 # *******************************************         donor           *****************************************************
@@ -109,6 +127,37 @@ def donor_registration():
     encoded = base64.b64encode(pwd)
     print(encoded)
     input['password'] = encoded
+
+    obj = donor_reg.insert_one(input).inserted_id
+    print(obj)
+    print(input)
+    data = dict(input).copy()
+    data.pop('password')
+    data.pop('_id')
+    data.update({'user_id': str(obj)})
+    print(data)
+    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
+
+
+@app.route('/food_donor/update_profile', methods=['POST'])
+def update_profile():
+    input = request.get_json()
+
+    # user_collection = pymongo.collection.Collection(db, 'donor___registration')
+    donor_reg = getCollectionName('donor___registration')
+
+    isUserIdPresent = donor_reg.find_one({'user_id': input['user_id']})
+
+    if isUserIdPresent is not None:
+        donor_reg.update_one({'user_id': input['user_id']}, {
+            'name': input['name'],
+            'business_name': input['business_name'],
+            'contact_number': input['contact_number'],
+            'country': input['country'],
+            'area_name': input['area_name'],
+            'street_name': input['postcode'],
+            'postcode': input['postcode']
+        })
 
     obj = donor_reg.insert_one(input).inserted_id
     print(obj)
