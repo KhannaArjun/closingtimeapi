@@ -199,5 +199,38 @@ def added_food_list():
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
 
 
+@app.route('/food_donor/remove_food_item', methods=['POST'])
+def remove_food_item():
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+    data = add_food_col.find_one({'user_id': str(input['user_id']), '_id': ObjectId(input['id'])})
+
+    add_food_col.delete_one(data)
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.deleted, False, {}))
+
+
+@app.route('/food_donor/modify_food_item', methods=['POST'])
+def modify_food_item():
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+    data = add_food_col.find_one({'user_id': str(input['user_id']), '_id': ObjectId(input['id'])})
+
+    if data is not None:
+        add_food_col.update_one({'user_id': input['user_id']}, {
+            'food_name': input['food_name'],
+            'food_desc': input['food_desc'],
+            'quantity': input['quantity'],
+            'food_ingredients': input['food_ingredients'],
+            'pick_up_date': input['pick_up_date'],
+            'allergen': input['allergen'],
+            'image': input['image']
+        })
+
+        return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, {}))
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.failed, False, {}))
+
+
 if __name__ == '__main__':
     app.run(debug=True)
