@@ -123,16 +123,16 @@ def donor_registration():
     if isMobilePresent is not None:
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
 
-    pwd = input['password'].encode("utf-8")
-    encoded = base64.b64encode(pwd)
-    print(encoded)
-    input['password'] = encoded
+    # pwd = input['password'].encode("utf-8")
+    # encoded = base64.b64encode(pwd)
+    # print(encoded)
+    # input['password'] = encoded
 
     obj = donor_reg.insert_one(input).inserted_id
     print(obj)
     print(input)
     data = dict(input).copy()
-    data.pop('password')
+    # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(obj)})
     print(data)
