@@ -100,7 +100,7 @@ def get_user_profile():
 
     print(isUserIdPresent)
     data = dict(isUserIdPresent).copy()
-    data.pop('password')
+    # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(isUserIdPresent['_id'])})
     print(data)
@@ -230,6 +230,44 @@ def modify_food_item():
         return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, {}))
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.failed, False, {}))
+
+
+# *******************************************         recipient           *****************************************************
+
+
+@app.route('/recipient/registration', methods=['POST'])
+def recipient_registration():
+    input = request.get_json()
+
+    recipient_reg = getCollectionName('recipient_registration')
+    donor_reg = getCollectionName('donor_registration')
+    # recipient_reg = getCollectionName('volunteer_registration')
+
+    isEmailPresentInRecipient = recipient_reg.find_one({'email': input['email']})
+    isMobilePresentRecipient = recipient_reg.find_one({'contact_number': input['contact_number']})
+
+    isEmailPresentInDonor = donor_reg.find_one({'email': input['email']})
+    isMobilePresentDonor = donor_reg.find_one({'contact_number': input['contact_number']})
+
+    if isEmailPresentInRecipient is not None:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
+    if isMobilePresentRecipient is not None:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.contact_number_exists, False, {}))
+
+    if isEmailPresentInDonor is not None:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
+    if isMobilePresentDonor is not None:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.contact_number_exists, False, {}))
+
+    obj = recipient_reg.insert_one(input).inserted_id
+    print(obj)
+    print(input)
+    data = dict(input).copy()
+    # data.pop('password')
+    data.pop('_id')
+    data.update({'user_id': str(obj)})
+    print(data)
+    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
 
 
 if __name__ == '__main__':
