@@ -70,16 +70,27 @@ def login():
 def isUserExists():
     input = request.get_json()
     print(input)
-    donor_reg = getCollectionName('donor___registration')
-    record = donor_reg.find_one({'email': input['email']})
-    if record:
-        data = dict(record).copy()
+    donor_reg = getCollectionName('donor_registration')
+    recipient_reg = getCollectionName('recipient_registration')
+
+    donor_record = donor_reg.find_one({'email': input['email']})
+    recipient_record = recipient_reg.find_one({'email': input['email']})
+
+    if donor_record:
+        data = dict(donor_record).copy()
         print(data)
-        data.update({'user_id': record['user_id']})
+        data.update({'user_id': donor_record['user_id']})
         print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
-    else:
-        return flask.jsonify(api_response.apiResponse(constants.Utils.new_user, False, {}))
+
+    if recipient_record:
+        data = dict(recipient_record).copy()
+        print(data)
+        data.update({'user_id': recipient_record['user_id']})
+        print(data)
+        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.new_user, False, {}))
 
 
 # *******************************************         donor           *****************************************************
@@ -268,6 +279,28 @@ def recipient_registration():
     data.update({'user_id': str(obj)})
     print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
+
+
+@app.route('/recipient/getUserProfile', methods=['POST'])
+def get_user_profile():
+    input = request.get_json()
+
+    recipient_reg = getCollectionName('recipient_registration')
+    print(ObjectId(input['user_id']))
+    print(input['user_id'])
+
+    isUserIdPresent = recipient_reg.find_one({'_id': ObjectId(input['user_id'])})
+
+    if isUserIdPresent is None:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
+
+    print(isUserIdPresent)
+    data = dict(isUserIdPresent).copy()
+    # data.pop('password')
+    data.pop('_id')
+    data.update({'user_id': str(isUserIdPresent['_id'])})
+    print(data)
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
 
 
 if __name__ == '__main__':
