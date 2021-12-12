@@ -76,17 +76,19 @@ def isUserExists():
     donor_record = donor_reg.find_one({'email': input['email']})
     recipient_record = recipient_reg.find_one({'email': input['email']})
 
-    if donor_record:
+    if donor_record is not None:
         data = dict(donor_record).copy()
         print(data)
-        data.update({'user_id': donor_record['user_id']})
+        data.pop('_id')
+        data.update({'user_id': str(donor_record['_id'])})
         print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
-    if recipient_record:
+    if recipient_record is not None:
         data = dict(recipient_record).copy()
         print(data)
-        data.update({'user_id': recipient_record['user_id']})
+        data.pop('_id')
+        data.update({'user_id': str(recipient_record['_id'])})
         print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
@@ -282,7 +284,7 @@ def recipient_registration():
 
 
 @app.route('/recipient/getUserProfile', methods=['POST'])
-def get_user_profile():
+def get_recipient_user_profile():
     input = request.get_json()
 
     recipient_reg = getCollectionName('recipient_registration')
