@@ -160,7 +160,7 @@ def donor_registration():
 
     data = dict(input).copy()
     data.pop('firebase_token')
-    obj = recipient_reg.insert_one(data).inserted_id
+    obj = donor_reg.insert_one(data).inserted_id
     print(obj)
     print(input)
     # data = dict(input).copy()
