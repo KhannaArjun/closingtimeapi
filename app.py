@@ -151,30 +151,30 @@ def donor_registration():
 
     # user_collection = pymongo.collection.Collection(db, 'donor_registration')
     donor_reg = getCollectionName('donor_registration')
+    recipient_reg = getCollectionName('recipient_registration')
 
-    isEmailPresent = donor_reg.find_one({'email': input['email']})
-    isMobilePresent = donor_reg.find_one({'contact_number': input['contact_number']})
-    print(isEmailPresent)
+    flag = checkIfDataExists(recipient_reg, donor_reg, input)
 
-    if isEmailPresent is not None:
-        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
-    if isMobilePresent is not None:
-        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
+    if flag is not None:
+        return flag
+
+    data = dict(input).copy()
+    data.pop('firebase_token')
+    obj = recipient_reg.insert_one(data).inserted_id
+    print(obj)
+    print(input)
+    # data = dict(input).copy()
+    # data.pop('password')
+    data.pop('_id')
+    data.update({'user_id': str(obj)})
+    save_firebase_token(str(obj), input["firebase_token"], input["role"])
+    print(data)
 
     # pwd = input['password'].encode("utf-8")
     # encoded = base64.b64encode(pwd)
     # print(encoded)
     # input['password'] = encoded
 
-    obj = donor_reg.insert_one(input).inserted_id
-    print(obj)
-    print(input)
-    data = dict(input).copy()
-    # data.pop('password')
-    data.pop('_id')
-    data.update({'user_id': str(obj)})
-    save_firebase_token(str(obj), input["firebase_token"], input["role"])
-    print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
 
 
@@ -311,6 +311,26 @@ def recipient_registration():
     donor_reg = getCollectionName('donor_registration')
     # recipient_reg = getCollectionName('volunteer_registration')
 
+    flag = checkIfDataExists(recipient_reg, donor_reg, input)
+
+    if flag is not None:
+        return flag
+
+    data = dict(input).copy()
+    data.pop('firebase_token')
+    obj = recipient_reg.insert_one(data).inserted_id
+    print(obj)
+    print(input)
+    # data = dict(input).copy()
+    # data.pop('password')
+    data.pop('_id')
+    data.update({'user_id': str(obj)})
+    save_firebase_token(str(obj), input["firebase_token"], input["role"])
+    print(data)
+    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
+
+
+def checkIfDataExists(recipient_reg, donor_reg, input):
     isEmailPresentInRecipient = recipient_reg.find_one({'email': input['email']})
     isMobilePresentRecipient = recipient_reg.find_one({'contact_number': input['contact_number']})
 
@@ -327,17 +347,7 @@ def recipient_registration():
     if isMobilePresentDonor is not None:
         return flask.jsonify(api_response.apiResponse(constants.Utils.contact_number_exists, False, {}))
 
-    obj = recipient_reg.insert_one(input).inserted_id
-    print(obj)
-    print(input)
-    data = dict(input).copy()
-    # data.pop('password')
-    data.pop('_id')
-    data.update({'user_id': str(obj)})
-    save_firebase_token(str(obj), input["firebase_token"], input["role"])
-    print(data)
-    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
-
+    return None
 
 @app.route('/recipient/getUserProfile', methods=['POST'])
 def get_recipient_user_profile():
