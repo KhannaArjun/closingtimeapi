@@ -228,7 +228,21 @@ def add_food():
 
     obj = add_food_col.insert_one(input)
 
-    # send_notifications_to_recipients()
+    user_firebase_token = getCollectionName("user_firebase_token")
+
+    objj = user_firebase_token.find({"role": constants.Utils.recipient})
+
+    print(str(objj))
+
+    l = list(objj)
+
+    ids = list()
+
+    for x in l:
+        print(x['firebase_token'])
+        ids.append(x['firebase_token'])
+
+    send_notifications_to_recipients(ids)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
@@ -240,10 +254,13 @@ def test():
     objj = user_firebase_token.find({"role": constants.Utils.recipient})
 
     print(str(objj))
-    print(list(objj))
 
-    for x in objj:
-        print(x)
+    l = list(objj)
+
+    # print(l)
+
+    for x in l:
+        print(x['firebase_token'])
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
