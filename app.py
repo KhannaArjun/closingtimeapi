@@ -18,8 +18,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-cred = credentials.Certificate(
-    "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
+cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
 firebase_admin.initialize_app(cred)
 
 app = Flask(__name__)
