@@ -13,6 +13,14 @@ from pymongo.cursor import Cursor
 import base64
 import bson
 from bson.binary import Binary
+from oauth2client.service_account import ServiceAccountCredentials
+
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+cred = credentials.Certificate(
+    "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
+firebase_admin.initialize_app(cred)
 
 app = Flask(__name__)
 
@@ -95,6 +103,24 @@ def isUserExists():
     return flask.jsonify(api_response.apiResponse(constants.Utils.new_user, False, {}))
 
 
+def sendPush(title, msg, registration_token, dataObject=None):
+    # See documentation on defining a message payload.
+    message = messaging.MulticastMessage(
+        notification=messaging.Notification(
+            title=title,
+            body=msg
+        ),
+        data=dataObject,
+        tokens=registration_token,
+    )
+
+    # Send a message to the device corresponding to the provided
+    # registration token.
+    response = messaging.send_multicast(message)
+    # Response is a message ID string.
+    print('Successfully sent message:', response)
+
+
 # *******************************************         donor           *****************************************************
 
 
@@ -148,8 +174,22 @@ def donor_registration():
     # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(obj)})
+    save_firebase_token(str(obj), input["firebase_token"], input["role"])
     print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
+
+
+def save_firebase_token(id, token, role):
+    user_firebase_token = getCollectionName("user_firebase_token")
+
+    data = user_firebase_token.find_one({"user_id": id})
+
+    if data is not None:
+        user_firebase_token.update_one({'user_id': id}, {"firebase_token": token})
+    else:
+        user_firebase_token.insert_one({'user_id': id, "firebase_token": token, "role": role})
+
+    return ""
 
 
 @app.route('/food_donor/update_profile', methods=['POST'])
@@ -173,8 +213,7 @@ def update_profile():
         })
 
     obj = donor_reg.insert_one(input).inserted_id
-    print(obj)
-    print(input)
+
     data = dict(input).copy()
     data.pop('password')
     data.pop('_id')
@@ -188,7 +227,24 @@ def add_food():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
 
-    add_food_col.insert_one(input)
+    obj = add_food_col.insert_one(input)
+
+    # send_notifications_to_recipients()
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
+
+
+@app.route('/test', methods=['POST'])
+def test():
+    user_firebase_token = getCollectionName("user_firebase_token")
+
+    objj = user_firebase_token.find({"role": constants.Utils.recipient})
+
+    print(str(objj))
+    print(list(objj))
+
+    for x in objj:
+        print(x)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
@@ -305,5 +361,56 @@ def get_recipient_user_profile():
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
 
 
+@app.route('/send_notif', methods=['POST'])
+def send_notif():
+    input = request.get_json()
+    # See documentation on defining a message payload.
+    notification = messaging.Notification(title="Title", body="Body")
+
+    # See documentation on defining a message payload.
+    message = messaging.Message(
+        notification=notification, token=input["token"])
+
+    response = messaging.send(message)
+    # Response is a message ID string.
+    print('Successfully sent message:', response)
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
+def send_notifications_to_recipients(ids):
+    # registration_tokens = [
+    #     'YOUR_REGISTRATION_TOKEN_1',
+    #     # ...
+    #     'YOUR_REGISTRATION_TOKEN_N',
+    # ]
+
+    notification = messaging.Notification(title="Title", body="Body")
+
+    # See documentation on defining a message payload.
+    message = messaging.Message(
+        notification=notification, token=ids)
+
+    response = messaging.send(message)
+    # Response is a message ID string.
+    print('Successfully sent message:', response)
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
+def _get_access_token():
+    """Retrieve a valid access token that can be used to authorize requests.
+
+  :return: Access token.
+  """
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(
+        '/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json',
+        'https://www.googleapis.com/auth/firebase.messaging')
+    access_token_info = credentials.get_access_token()
+    print(access_token_info)
+    return access_token_info.access_token
+
+
 if __name__ == '__main__':
     app.run(debug=True)
+    # print(_get_access_token())

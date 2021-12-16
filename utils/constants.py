@@ -10,3 +10,7 @@ class Utils:
     deleted = "deleted"
     updated = "updated"
     no_user_found = "No user profile found"
+    fb_food_added_topic = "food_added"
+    recipient = "Recipient"
+    volunteer = "Volunteer"
+    donor = "Donor"
