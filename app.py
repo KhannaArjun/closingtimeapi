@@ -55,7 +55,7 @@ def index():
 def login():
     input = request.get_json()
     print(input)
-    donor_reg = getCollectionName('donor___registration')
+    donor_reg = getCollectionName('donor_registration')
     record = donor_reg.find_one({'email': input['email']})
     if record:
         pwd = base64.b64decode(record['password']).decode('utf-8')
@@ -128,7 +128,7 @@ def sendPush(title, msg, registration_token, dataObject=None):
 def get_user_profile():
     input = request.get_json()
 
-    donor_reg = getCollectionName('donor___registration')
+    donor_reg = getCollectionName('donor_registration')
     print(ObjectId(input['user_id']))
     print(input['user_id'])
 
@@ -150,8 +150,8 @@ def get_user_profile():
 def donor_registration():
     input = request.get_json()
 
-    # user_collection = pymongo.collection.Collection(db, 'donor___registration')
-    donor_reg = getCollectionName('donor___registration')
+    # user_collection = pymongo.collection.Collection(db, 'donor_registration')
+    donor_reg = getCollectionName('donor_registration')
 
     isEmailPresent = donor_reg.find_one({'email': input['email']})
     isMobilePresent = donor_reg.find_one({'contact_number': input['contact_number']})
@@ -196,8 +196,8 @@ def save_firebase_token(id, token, role):
 def update_profile():
     input = request.get_json()
 
-    # user_collection = pymongo.collection.Collection(db, 'donor___registration')
-    donor_reg = getCollectionName('donor___registration')
+    # user_collection = pymongo.collection.Collection(db, 'donor_registration')
+    donor_reg = getCollectionName('donor_registration')
 
     isUserIdPresent = donor_reg.find_one({'user_id': input['user_id']})
 
@@ -335,6 +335,7 @@ def recipient_registration():
     # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(obj)})
+    save_firebase_token(str(obj), input["firebase_token"], input["role"])
     print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
 
