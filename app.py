@@ -88,6 +88,7 @@ def isUserExists():
         print(data)
         data.pop('_id')
         data.update({'user_id': str(donor_record['_id'])})
+        updateFirebaseToken(donor_record, data['user_id'], input['firebase_token'])
         print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
@@ -97,9 +98,17 @@ def isUserExists():
         data.pop('_id')
         data.update({'user_id': str(recipient_record['_id'])})
         print(data)
+        updateFirebaseToken(recipient_record, data['user_id'], input['firebase_token'])
+
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.new_user, False, {}))
+
+
+def updateFirebaseToken(collection, id, fb_token):
+    collection.update_one({"user_id": id}, {"firebase_token": fb_token})
+
+    return ""
 
 
 def sendPush(title, msg, registration_token, dataObject=None):
