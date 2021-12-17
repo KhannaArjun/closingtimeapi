@@ -270,11 +270,11 @@ def added_food_list():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
 
-    if input is not None:
-
-        data = add_food_col.find({'user_id': str(input['user_id'])})
-    else:
+    if input['user_id'] == "":
         data = add_food_col.find({})
+
+    else:
+        data = add_food_col.find({'user_id': str(input['user_id'])})
 
     foodList = []
     array = list(data)
