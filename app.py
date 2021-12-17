@@ -240,7 +240,7 @@ def add_food():
 
     for x in l:
         print(x['firebase_token'])
-        ids.append(x['firebase_token'])
+        ids.append(str(x['firebase_token']))
 
     send_notifications_to_recipients(ids)
 
@@ -269,7 +269,12 @@ def test():
 def added_food_list():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
-    data = add_food_col.find({'user_id': str(input['user_id'])})
+
+    if input is not None:
+
+        data = add_food_col.find({'user_id': str(input['user_id'])})
+    else:
+        data = add_food_col.find({})
 
     foodList = []
     array = list(data)
@@ -415,14 +420,19 @@ def send_notifications_to_recipients(ids):
     notification = messaging.Notification(title="Title", body="Body")
 
     # See documentation on defining a message payload.
-    message = messaging.Message(
-        notification=notification, token=ids)
-
-    response = messaging.send(message)
-    # Response is a message ID string.
-    print('Successfully sent message:', response)
-
-    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+    message = messaging.MulticastMessage(
+        notification=notification,
+        tokens=ids,
+    )
+    response = messaging.send_multicast(message)
+    if response.failure_count > 0:
+        responses = response.responses
+        failed_tokens = []
+        for idx, resp in enumerate(responses):
+            if not resp.success:
+                # The order of responses corresponds to the order of the registration tokens.
+                failed_tokens.append(ids[idx])
+        print('List of tokens that caused failures: {0}'.format(failed_tokens))
 
 
 def _get_access_token():
