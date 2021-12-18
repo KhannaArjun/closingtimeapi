@@ -251,7 +251,7 @@ def add_food():
         print(x['firebase_token'])
         ids.append(str(x['firebase_token']))
 
-    send_notifications_to_recipients(ids)
+    send_notifications_to_recipients(ids, input['food_name'], input['quantity'])
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
@@ -419,14 +419,14 @@ def send_notif():
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
 
-def send_notifications_to_recipients(ids):
+def send_notifications_to_recipients(ids, food_name, quantity):
     # registration_tokens = [
     #     'YOUR_REGISTRATION_TOKEN_1',
     #     # ...
     #     'YOUR_REGISTRATION_TOKEN_N',
     # ]
 
-    notification = messaging.Notification(title="Title", body="Body")
+    notification = messaging.Notification(title= food_name, body= quantity)
 
     # See documentation on defining a message payload.
     message = messaging.MulticastMessage(
