@@ -88,7 +88,7 @@ def isUserExists():
         print(data)
         data.pop('_id')
         data.update({'user_id': str(donor_record['_id'])})
-        updateFirebaseToken(data['user_id'], input['firebase_token'])
+        updateFirebaseToken(data['user_id'], input['firebase_token'], constants.Utils.donor)
         print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
@@ -98,16 +98,17 @@ def isUserExists():
         data.pop('_id')
         data.update({'user_id': str(recipient_record['_id'])})
         print(data)
-        updateFirebaseToken(data['user_id'], input['firebase_token'])
+        updateFirebaseToken(data['user_id'], input['firebase_token'], constants.Utils.recipient)
 
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.new_user, False, {}))
 
 
-def updateFirebaseToken(id, fb_token):
+def updateFirebaseToken(id, fb_token, role):
     user_firebase_token = getCollectionName('user_firebase_token')
-    user_firebase_token.replace_one({"user_id": id}, {"firebase_token": fb_token}, True)
+    print(fb_token)
+    user_firebase_token.replace_one({"user_id": id}, {"firebase_token": fb_token, "user_id": id, "role": role})
 
     return ""
 
@@ -194,11 +195,9 @@ def save_firebase_token(id, token, role):
     data = user_firebase_token.find_one({"user_id": id})
 
     if data is not None:
-        user_firebase_token.update_one({'user_id': id}, {"firebase_token": token})
+       return user_firebase_token.replace_one({'user_id': id}, {'user_id': id, "firebase_token": token, "role": role})
     else:
-        user_firebase_token.insert_one({'user_id': id, "firebase_token": token, "role": role})
-
-    return ""
+       return user_firebase_token.insert_one({'user_id': id, "firebase_token": token, "role": role})
 
 
 @app.route('/food_donor/update_profile', methods=['POST'])
