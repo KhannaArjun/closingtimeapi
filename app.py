@@ -487,9 +487,9 @@ def send_notification_to_donor(token, recipient_name):
     notification = messaging.Notification(title="Food Accepted by " + str(recipient_name), body="")
 
     # See documentation on defining a message payload.
-    message = messaging.MulticastMessage(
+    message = messaging.Message(
         notification=notification,
-        tokens=token,
+        token=token,
     )
     response = messaging.send(message)
 
