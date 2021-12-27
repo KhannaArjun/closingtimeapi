@@ -41,8 +41,19 @@ db = client.get_database('closingtime')
 #
 # mongoEngine.init_app(app)
 
+
 def getCollectionName(col_name):
     return pymongo.collection.Collection(db, col_name)
+
+
+# stream = getCollectionName("add_food").watch()
+#
+# while stream.alive:
+#     try:
+#         doc = stream.next()
+#         print(doc)
+#     except StopIteration:
+#         print("exception")
 
 
 @app.route('/', methods=['GET'])
@@ -195,9 +206,9 @@ def save_firebase_token(id, token, role):
     data = user_firebase_token.find_one({"user_id": id})
 
     if data is not None:
-       return user_firebase_token.replace_one({'user_id': id}, {'user_id': id, "firebase_token": token, "role": role})
+        return user_firebase_token.replace_one({'user_id': id}, {'user_id': id, "firebase_token": token, "role": role})
     else:
-       return user_firebase_token.insert_one({'user_id': id, "firebase_token": token, "role": role})
+        return user_firebase_token.insert_one({'user_id': id, "firebase_token": token, "role": role})
 
 
 @app.route('/food_donor/update_profile', methods=['POST'])
@@ -380,6 +391,7 @@ def checkIfDataExists(recipient_reg, donor_reg, input):
 
     return None
 
+
 @app.route('/recipient/getUserProfile', methods=['POST'])
 def get_recipient_user_profile():
     input = request.get_json()
@@ -400,6 +412,33 @@ def get_recipient_user_profile():
     data.update({'user_id': str(isUserIdPresent['_id'])})
     print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+
+
+@app.route('/recipient/accept_food', methods=['POST'])
+def accept_food():
+    input = request.get_json()
+
+    # recipient_reg = getCollectionName('recipient_registration')
+    accept_food = getCollectionName('accept_food')
+    add_food = getCollectionName('add_food')
+    user_firebase_token = getCollectionName('user_firebase_token')
+    recipient_registration = getCollectionName('recipient_registration')
+
+    accept_food.insert_one(input)
+
+    add_food.update_one({
+        '_id': ObjectId(input['food_item_id'])
+    }, {
+        '$set': {
+            'isFoodAccepted': True
+        }
+    }, upsert=False)
+
+    obj = user_firebase_token.find_one({"user_id": input["user_id"]})
+
+    send_notification_to_donor(obj['firebase_token'], input["business_name"])
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
 
 @app.route('/send_notif', methods=['POST'])
@@ -426,7 +465,7 @@ def send_notifications_to_recipients(ids, food_name, quantity):
     #     'YOUR_REGISTRATION_TOKEN_N',
     # ]
 
-    notification = messaging.Notification(title= food_name, body= quantity)
+    notification = messaging.Notification(title=food_name, body=quantity)
 
     # See documentation on defining a message payload.
     message = messaging.MulticastMessage(
@@ -444,6 +483,18 @@ def send_notifications_to_recipients(ids, food_name, quantity):
         print('List of tokens that caused failures: {0}'.format(failed_tokens))
 
 
+def send_notification_to_donor(token, recipient_name):
+
+    notification = messaging.Notification(title="Food Accepted by " + str(recipient_name), body="")
+
+    # See documentation on defining a message payload.
+    message = messaging.MulticastMessage(
+        notification=notification,
+        tokens=token,
+    )
+    response = messaging.send(message)
+
+
 def _get_access_token():
     """Retrieve a valid access token that can be used to authorize requests.
 
@@ -459,4 +510,3 @@ def _get_access_token():
 
 if __name__ == '__main__':
     app.run(debug=True)
-    # print(_get_access_token())
