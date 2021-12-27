@@ -422,7 +422,6 @@ def accept_food():
     accept_food = getCollectionName('accept_food')
     add_food = getCollectionName('add_food')
     user_firebase_token = getCollectionName('user_firebase_token')
-    recipient_registration = getCollectionName('recipient_registration')
 
     accept_food.insert_one(input)
 
@@ -434,7 +433,7 @@ def accept_food():
         }
     }, upsert=False)
 
-    obj = user_firebase_token.find_one({"user_id": input["user_id"]})
+    obj = user_firebase_token.find_one({"user_id": input["donor_user_id"]})
 
     send_notification_to_donor(obj['firebase_token'], input["business_name"])
 
