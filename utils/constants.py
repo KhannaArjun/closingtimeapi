@@ -14,6 +14,7 @@ class Utils:
     recipient = "Recipient"
     volunteer = "Volunteer"
     donor = "Donor"
+    miles = 10
 
 # def parse():
 #     json = [
