@@ -18,6 +18,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import firebase_admin
 from firebase_admin import credentials, messaging
 from math import radians, cos, sin, asin, sqrt
+from datetime import datetime
 
 cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
 firebase_admin.initialize_app(cred)
@@ -447,10 +448,15 @@ def getAvailableFoodList():
     foodList = []
     array = list(data)
     if len(array):
+        present_date = datetime.now().date()
         for x in array:
             obj = dict(x)
+            pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
+            if pick_up_date <= present_date:
+                obj.update({"status": constants.Utils.expired})
             obj.update({'id': str(obj['_id'])})
             del obj['_id']
+
             miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
 
             if miles < constants.Utils.miles:
@@ -475,7 +481,8 @@ def accept_food():
         '_id': ObjectId(input['food_item_id'])
     }, {
         '$set': {
-            'isFoodAccepted': True
+            'isFoodAccepted': True,
+            'status': constants.Utils.waiting_for_volunteer
         }
     }, upsert=False)
 
@@ -570,4 +577,10 @@ def _get_access_token():
 
 
 if __name__ == '__main__':
+    # present_date = datetime.now().date()
+    # pick_up_date = datetime.strptime("2022-01-03", "%Y-%m-%d").date()
+    # print(pick_up_date)
+    # if pick_up_date <= present_date:
+    #     print("working")
+    # print(present_date)
     app.run(debug=True)

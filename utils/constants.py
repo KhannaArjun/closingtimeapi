@@ -14,6 +14,8 @@ class Utils:
     recipient = "Recipient"
     volunteer = "Volunteer"
     donor = "Donor"
+    expired = "Expired"
+    waiting_for_volunteer = "Waiting for volunteer"
     miles = 10
 
 # def parse():
