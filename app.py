@@ -443,7 +443,8 @@ def getAvailableFoodList():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
 
-    data = add_food_col.find({'isFoodAccepted': input['isFoodAccepted']})
+    # data = add_food_col.find({'isFoodAccepted': input['isFoodAccepted']})
+    data = add_food_col.find()
 
     foodList = []
     array = list(data)
