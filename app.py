@@ -223,24 +223,21 @@ def update_profile():
     isUserIdPresent = donor_reg.find_one({'user_id': input['user_id']})
 
     if isUserIdPresent is not None:
-        donor_reg.update_one({'user_id': input['user_id']}, {
-            'name': input['name'],
-            'business_name': input['business_name'],
-            'contact_number': input['contact_number'],
-            'country': input['country'],
-            'area_name': input['area_name'],
-            'street_name': input['postcode'],
-            'postcode': input['postcode']
-        })
+        obj = donor_reg.update_one({'user_id': input['user_id']}, {
+            '$set': {'name': input['name'],
+                     'business_name': input['business_name'],
+                     'contact_number': input['contact_number'],
+                     'address': input['address'],
+                     'lat': input['lat'],
+                     'lng': input['lng'],
+                     'place_id': input['place_id']
+                     }}, upsert=False)
 
-    obj = donor_reg.insert_one(input).inserted_id
-
-    data = dict(input).copy()
-    data.pop('password')
-    data.pop('_id')
-    data.update({'user_id': str(obj)})
-    print(data)
-    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
+        data = dict(input).copy()
+        print(data)
+        return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, data))
+    else:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
 
 
 @app.route('/food_donor/add_food', methods=['POST'])
