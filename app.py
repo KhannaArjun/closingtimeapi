@@ -453,7 +453,7 @@ def getAvailableFoodList():
         for x in array:
             obj = dict(x)
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            if pick_up_date <= present_date:
+            if pick_up_date >= present_date:
                 obj.update({"status": constants.Utils.expired})
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
