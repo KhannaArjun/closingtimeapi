@@ -220,7 +220,7 @@ def update_profile():
     # user_collection = pymongo.collection.Collection(db, 'donor_registration')
     donor_reg = getCollectionName('donor_registration')
 
-    isUserIdPresent = donor_reg.find_one({'user_id': input['user_id']})
+    isUserIdPresent = donor_reg.find_one({'_id': ObjectId(input['user_id'])})
 
     if isUserIdPresent is not None:
         obj = donor_reg.update_one({'user_id': input['user_id']}, {
