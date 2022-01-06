@@ -121,7 +121,12 @@ def isUserExists():
 def updateFirebaseToken(id, fb_token, role):
     user_firebase_token = getCollectionName('user_firebase_token')
     print(fb_token)
-    user_firebase_token.replace_one({"user_id": id}, {"firebase_token": fb_token, "user_id": id, "role": role})
+    data = user_firebase_token.find_one({"user_id": id})
+
+    if data is not None:
+        user_firebase_token.replace_one({"user_id": id}, {"firebase_token": fb_token, "user_id": id, "role": role})
+    else:
+        user_firebase_token.insert_one({"firebase_token": fb_token, "user_id": id, "role": role})
 
     return ""
 
