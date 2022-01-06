@@ -518,7 +518,9 @@ def accept_food():
 
     obj = user_firebase_token.find_one({"user_id": input["donor_user_id"]})
 
-    send_notification_to_donor(obj['firebase_token'], input["business_name"])
+    if obj is not None:
+        if not obj['firebase_token']:
+            send_notification_to_donor(obj['firebase_token'], input["business_name"])
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
