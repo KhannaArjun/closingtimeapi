@@ -535,6 +535,16 @@ def send_notif():
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
 
+@app.route('/logout', methods=['POST'])
+def logout():
+    input = request.get_json()
+
+    user_firebase_token_col = getCollectionName('user_firebase_token')
+    user_firebase_token_col.delete_one({"user_id": input['user_id']})
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
 def send_notifications_to_recipients(ids, food_name, quantity):
     # registration_tokens = [
     #     'YOUR_REGISTRATION_TOKEN_1',
