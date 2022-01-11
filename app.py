@@ -502,7 +502,7 @@ def getAvailableFoodList():
                 miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
 
                 if miles < constants.Utils.miles:
-                    obj.update({"distance": miles})
+                    obj.update({"distance": str(miles)})
                     foodList.append(obj)
 
     if len(accepted_food_list):
@@ -518,7 +518,7 @@ def getAvailableFoodList():
                 i.update({'id': str(i['_id'])})
                 del i['_id']
                 miles = dist(input['recipient_lat'], input['recipient_lng'], i['pick_up_lat'], i['pick_up_lng'])
-                i.update({"distance": miles})
+                i.update({"distance": str(miles)})
                 foodList.append(i)
 
 
