@@ -471,16 +471,22 @@ def get_recipient_user_profile():
 def getAvailableFoodList():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
+    accept_food_col = getCollectionName('accept_food')
 
-    # data = add_food_col.find({'isFoodAccepted': input['isFoodAccepted']})
-    data = add_food_col.find()
+    available_foods = add_food_col.find({'isFoodAccepted': input['isFoodAccepted']})
+    accepted_food = accept_food_col.find({"recipient_user_id": input['user_id']}, {"food_item_id": 2, '_id': False})
+    present_date = datetime.now().date()
+
+    accepted_food_id_list = []
+    available_food_list = list(available_foods)
+    accepted_food_list = list(accepted_food)
+    # print(accepted_food_list)
 
     foodList = []
-    array = list(data)
-    if len(array):
-        present_date = datetime.now().date()
-        for x in array:
-            obj = dict(x)
+
+    if len(available_food_list):
+        for obj in available_food_list:
+            # obj = dict(x)
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
             if pick_up_date >= present_date:
                 # obj.update({"status": constants.Utils.expired})
@@ -490,8 +496,41 @@ def getAvailableFoodList():
                 miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
 
                 if miles < constants.Utils.miles:
+                    obj.update({"distance": miles})
                     foodList.append(obj)
-        array.clear()
+
+    if len(accepted_food_list):
+        for item in accepted_food_list:
+            accepted_food_id_list.append(ObjectId(item['food_item_id']))
+
+        accepted_food_obj = add_food_col.find({"_id": {"$in": accepted_food_id_list}})
+        accepted_food_obj_list = list(accepted_food_obj)
+        print(accepted_food_obj_list)
+        for i in accepted_food_obj_list:
+            pick_up_date = datetime.strptime(i['pick_up_date'], "%Y-%m-%d").date()
+            if pick_up_date >= present_date:
+                i.update({'id': str(i['_id'])})
+                del i['_id']
+                miles = dist(input['recipient_lat'], input['recipient_lng'], i['pick_up_lat'], i['pick_up_lng'])
+                i.update({"distance": miles})
+                foodList.append(i)
+
+
+        # print(foodList)
+    # else:
+    #     if len(available_food_list):
+    #         for obj in available_food_list:
+    #             # obj = dict(x)
+    #             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
+    #             if pick_up_date >= present_date:
+    #                 # obj.update({"status": constants.Utils.expired})
+    #                 obj.update({'id': str(obj['_id'])})
+    #                 del obj['_id']
+    #
+    #                 miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
+    #
+    #                 if miles < constants.Utils.miles:
+    #                     foodList.append(obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
 
