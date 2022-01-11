@@ -322,14 +322,19 @@ def added_food_list():
     else:
         data = add_food_col.find({'user_id': str(input['user_id'])})
 
+    present_date = get_today_date()
+
     foodList = []
     array = list(data)
     if len(array):
-        for x in array:
-            obj = dict(x)
-            obj.update({'id': str(obj['_id'])})
-            del obj['_id']
-            foodList.append(obj)
+        for obj in array:
+            # obj = dict(x)
+            pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
+            if pick_up_date >= present_date:
+                # obj.update({"status": constants.Utils.expired})
+                obj.update({'id': str(obj['_id'])})
+                del obj['_id']
+                foodList.append(obj)
         array.clear()
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
@@ -475,7 +480,8 @@ def getAvailableFoodList():
 
     available_foods = add_food_col.find({'isFoodAccepted': input['isFoodAccepted']})
     accepted_food = accept_food_col.find({"recipient_user_id": input['user_id']}, {"food_item_id": 2, '_id': False})
-    present_date = datetime.now().date()
+
+    present_date = get_today_date()
 
     accepted_food_id_list = []
     available_food_list = list(available_foods)
@@ -533,6 +539,10 @@ def getAvailableFoodList():
     #                     foodList.append(obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
+
+
+def get_today_date():
+    return datetime.now().date()
 
 
 @app.route('/recipient/accept_food', methods=['POST'])
