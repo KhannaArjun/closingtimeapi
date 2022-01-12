@@ -228,7 +228,7 @@ def update_profile():
     isUserIdPresent = donor_reg.find_one({'_id': ObjectId(input['user_id'])})
 
     if isUserIdPresent is not None:
-        obj = donor_reg.update_one({'user_id': input['user_id']}, {
+        obj = donor_reg.update_one({'_id': ObjectId(input['user_id'])}, {
             '$set': {'name': input['name'],
                      'business_name': input['business_name'],
                      'contact_number': input['contact_number'],
@@ -413,7 +413,7 @@ def update_recipient_profile():
     isUserIdPresent = recipient_reg.find_one({'_id': ObjectId(input['user_id'])})
 
     if isUserIdPresent is not None:
-        obj = recipient_reg.update_one({'user_id': input['user_id']}, {
+        obj = recipient_reg.update_one({'_id': ObjectId(input['user_id'])}, {
             '$set': {'name': input['name'],
                      'business_name': input['business_name'],
                      'contact_number': input['contact_number'],
@@ -668,10 +668,5 @@ def _get_access_token():
 
 
 if __name__ == '__main__':
-    # present_date = datetime.now().date()
-    # pick_up_date = datetime.strptime("2022-01-03", "%Y-%m-%d").date()
-    # print(pick_up_date)
-    # if pick_up_date <= present_date:
-    #     print("working")
-    # print(present_date)
+
     app.run(debug=True)
