@@ -451,7 +451,7 @@ def update_recipient_profile():
         return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
 
 
-def checkIfDataExists(recipient_reg, donor_reg, volunteer_reg,  input):
+def checkIfDataExists(recipient_reg, donor_reg, volunteer_reg, input):
     isEmailPresentInRecipient = recipient_reg.find_one({'email': input['email']})
     # isMobilePresentRecipient = recipient_reg.find_one({'contact_number': input['contact_number']})
 
@@ -634,13 +634,44 @@ def volunteer_registration():
     data = dict(input).copy()
     data.pop('firebase_token')
     obj = volunteer_reg.insert_one(data).inserted_id
-    print(obj)
     data.pop('_id')
     data.update({'user_id': str(obj)})
     save_firebase_token(str(obj), input["firebase_token"], input["role"])
     print(data)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
+
+
+@app.route('/volunteer/getAvailableFoodList', methods=['POST'])
+def getAvailableFoodListForVolunteer():
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+
+    waiting_for_volunteer_foods = add_food_col.find(
+        {'isFoodAccepted': input['isFoodAccepted'], "status": constants.Utils.waiting_for_volunteer})  # true
+
+    present_date = get_today_date()
+
+    waiting_for_volunteer_food_list = list(waiting_for_volunteer_foods)
+
+    foodList = []
+
+    if len(waiting_for_volunteer_food_list):
+        for obj in waiting_for_volunteer_food_list:
+            # obj = dict(x)
+            pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
+            if pick_up_date >= present_date:
+                # obj.update({"status": constants.Utils.expired})
+                obj.update({'id': str(obj['_id'])})
+                del obj['_id']
+
+                miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
+
+                if miles <= input['serving_distance']:
+                    obj.update({"distance": str(miles)})
+                    foodList.append(obj)
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
 
 
 @app.route('/logout', methods=['POST'])
