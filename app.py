@@ -11,15 +11,12 @@ from utils import api_response
 from utils import constants
 from pymongo.cursor import Cursor
 import base64
-import bson
-from bson.binary import Binary
 from oauth2client.service_account import ServiceAccountCredentials
 
 import firebase_admin
 from firebase_admin import credentials, messaging
 from math import radians, cos, sin, asin, sqrt
 from datetime import datetime
-import gridfs
 
 cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
 firebase_admin.initialize_app(cred)
@@ -181,14 +178,14 @@ def get_user_profile():
 def donor_registration():
     input = request.get_json()
 
-    # user_collection = pymongo.collection.Collection(db, 'donor_registration')
     donor_reg = getCollectionName('donor_registration')
-    # recipient_reg = getCollectionName('recipient_registration')
-    #
-    # flag = checkIfDataExists(recipient_reg, donor_reg, input)
-    #
-    # if flag is not None:
-    #     return flag
+    recipient_reg = getCollectionName('recipient_registration')
+    volunteer_reg = getCollectionName('volunteer_registration')
+
+    flag = checkIfDataExists(recipient_reg, donor_reg, volunteer_reg, input)
+
+    if flag is not None:
+        return flag
 
     data = dict(input).copy()
     data.pop('firebase_token')
@@ -384,12 +381,13 @@ def recipient_registration():
     input = request.get_json()
 
     recipient_reg = getCollectionName('recipient_registration')
-    # donor_reg = getCollectionName('donor_registration')
-    #
-    # flag = checkIfDataExists(recipient_reg, donor_reg, input)
-    #
-    # if flag is not None:
-    #     return flag
+    donor_reg = getCollectionName('donor_registration')
+    volunteer_reg = getCollectionName('volunteer_registration')
+
+    flag = checkIfDataExists(recipient_reg, donor_reg, volunteer_reg, input)
+
+    if flag is not None:
+        return flag
 
     data = dict(input).copy()
     data.pop('firebase_token')
@@ -431,22 +429,27 @@ def update_recipient_profile():
         return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
 
 
-def checkIfDataExists(recipient_reg, donor_reg, input):
+def checkIfDataExists(recipient_reg, donor_reg, volunteer_reg,  input):
     isEmailPresentInRecipient = recipient_reg.find_one({'email': input['email']})
-    isMobilePresentRecipient = recipient_reg.find_one({'contact_number': input['contact_number']})
+    # isMobilePresentRecipient = recipient_reg.find_one({'contact_number': input['contact_number']})
 
     isEmailPresentInDonor = donor_reg.find_one({'email': input['email']})
-    isMobilePresentDonor = donor_reg.find_one({'contact_number': input['contact_number']})
+    # isMobilePresentDonor = donor_reg.find_one({'contact_number': input['contact_number']})
+
+    isEmailPresentInVolunteer = volunteer_reg.find_one({'email': input['email']})
 
     if isEmailPresentInRecipient is not None:
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
-    if isMobilePresentRecipient is not None:
-        return flask.jsonify(api_response.apiResponse(constants.Utils.contact_number_exists, False, {}))
+    # if isMobilePresentRecipient is not None:
+    #     return flask.jsonify(api_response.apiResponse(constants.Utils.contact_number_exists, False, {}))
 
     if isEmailPresentInDonor is not None:
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
-    if isMobilePresentDonor is not None:
-        return flask.jsonify(api_response.apiResponse(constants.Utils.contact_number_exists, False, {}))
+    # if isMobilePresentDonor is not None:
+    #     return flask.jsonify(api_response.apiResponse(constants.Utils.contact_number_exists, False, {}))
+
+    if isEmailPresentInVolunteer is not None:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, {}))
 
     return None
 
@@ -598,10 +601,10 @@ def volunteer_registration():
     input = request.get_json()
 
     volunteer_reg = getCollectionName('volunteer_registration')
-    # volunteer_reg = getCollectionName('donor_registration')
+    donor_reg = getCollectionName('donor_registration')
     recipient_reg = getCollectionName('recipient_registration')
 
-    flag = checkIfDataExists(recipient_reg, volunteer_reg, input)
+    flag = checkIfDataExists(recipient_reg, volunteer_reg, donor_reg, input)
 
     if flag is not None:
         return flag
