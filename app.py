@@ -91,9 +91,11 @@ def isUserExists():
     print(input)
     donor_reg = getCollectionName('donor_registration')
     recipient_reg = getCollectionName('recipient_registration')
+    volunteer_reg = getCollectionName('volunteer_registration')
 
     donor_record = donor_reg.find_one({'email': input['email']})
     recipient_record = recipient_reg.find_one({'email': input['email']})
+    volunteer_record = volunteer_reg.find_one({'email': input['email']})
 
     if donor_record is not None:
         data = dict(donor_record).copy()
@@ -111,6 +113,16 @@ def isUserExists():
         data.update({'user_id': str(recipient_record['_id'])})
         print(data)
         updateFirebaseToken(data['user_id'], input['firebase_token'], constants.Utils.recipient)
+
+        return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
+
+    if volunteer_record is not None:
+        data = dict(volunteer_record).copy()
+        print(data)
+        data.pop('_id')
+        data.update({'user_id': str(volunteer_record['_id'])})
+        print(data)
+        updateFirebaseToken(data['user_id'], input['firebase_token'], constants.Utils.volunteer)
 
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
@@ -237,6 +249,16 @@ def update_profile():
                      'lng': input['lng'],
                      'place_id': input['place_id']
                      }}, upsert=False)
+
+        # accept_food_col = getCollectionName('accept_food')
+        #
+        # accept_food_objects = accept_food_col.find({"donor_user_id": input['user_id']})
+        #
+        # if accept_food_objects is not None:
+        #     accept_food_objects_list = list(accept_food_objects)
+        #
+        #
+        # add_food_col = getCollectionName('add_food')
 
         data = dict(input).copy()
         print(data)
