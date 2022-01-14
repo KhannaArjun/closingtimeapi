@@ -657,6 +657,9 @@ def getAvailableFoodListForVolunteer():
     foodList = []
 
     if len(waiting_for_volunteer_food_list):
+        accepted_food_col = getCollectionName("accept_food")
+        recipient_registration_col = getCollectionName("recipient_registration")
+
         for obj in waiting_for_volunteer_food_list:
             # obj = dict(x)
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
@@ -664,10 +667,11 @@ def getAvailableFoodListForVolunteer():
                 # obj.update({"status": constants.Utils.expired})
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
-
+                accepted_food_obj = accepted_food_col.find_one({"food_item_id" : obj['id']})
+                obj.update({"recipient_user_id" : accepted_food_obj["recipient_user_id"]})
+                recipient_obj = recipient_registration_col.find_one({"_id": ObjectId(accepted_food_obj["recipient_user_id"])})
                 miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
-
-                if miles <= input['serving_distance']:
+                if miles <= float(input['serving_distance']):
                     obj.update({"distance": str(miles)})
                     foodList.append(obj)
 
