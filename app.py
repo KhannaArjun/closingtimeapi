@@ -528,7 +528,7 @@ def getAvailableFoodList():
                 miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
 
                 if miles < constants.Utils.miles:
-                    obj.update({"distance": str(miles)})
+                    obj.update({"distance": '%.2f'%(miles)})
                     foodList.append(obj)
 
     if len(accepted_food_list):
@@ -544,7 +544,7 @@ def getAvailableFoodList():
                 i.update({'id': str(i['_id'])})
                 del i['_id']
                 miles = dist(input['recipient_lat'], input['recipient_lng'], i['pick_up_lat'], i['pick_up_lng'])
-                i.update({"distance": str(miles)})
+                i.update({"distance": '%.2f'%(miles)})
                 foodList.append(i)
 
         # print(foodList)
@@ -669,13 +669,37 @@ def getAvailableFoodListForVolunteer():
                 del obj['_id']
                 accepted_food_obj = accepted_food_col.find_one({"food_item_id" : obj['id']})
                 obj.update({"recipient_user_id" : accepted_food_obj["recipient_user_id"]})
-                recipient_obj = recipient_registration_col.find_one({"_id": ObjectId(accepted_food_obj["recipient_user_id"])})
-                miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
+                miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
                 if miles <= float(input['serving_distance']):
-                    obj.update({"distance": str(miles)})
+                    obj.update({"distance": '%.2f'%(miles)})
                     foodList.append(obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
+
+
+@app.route('/volunteer/getFoodItemDetails', methods=['POST'])
+def getFoodItemDetails():
+    input = request.get_json()
+    recipient_registration_col = getCollectionName('recipient_registration')
+    donor_registration_col = getCollectionName('donor_registration')
+
+    recipient_obj = recipient_registration_col.find_one({"_id": ObjectId(input['recipient_user_id'])})
+    donor_obj = donor_registration_col.find_one({"_id": ObjectId(input['donor_user_id'])})
+
+    final_obj = dict()
+    if recipient_obj is not None:
+        final_obj.update({ "recipient_name": recipient_obj['name'], "recipient_business_name": recipient_obj['business_name'],
+                           "recipient_contact_number": recipient_obj['contact_number'], "code": recipient_obj['code'], "recipient_address": recipient_obj['address'],
+                           "recipient_lat": recipient_obj['lat'], "recipient_lng": recipient_obj['lng']})
+
+        if donor_obj is not None:
+            final_obj.update(
+                {"donor_name": donor_obj['name'], "donor_business_name": donor_obj['business_name'],
+                 "donor_contact_number": donor_obj['contact_number'],
+                 "donor_address": donor_obj['address'],
+                 "donor_lat": donor_obj['lat'], "donor_lng": donor_obj['lng']})
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_obj))
 
 
 @app.route('/logout', methods=['POST'])
