@@ -642,6 +642,32 @@ def volunteer_registration():
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
 
 
+@app.route('/volunteer/update_profile', methods=['POST'])
+def volunteer_update_profile():
+    input = request.get_json()
+
+    donor_reg = getCollectionName('volunteer_registration')
+
+    isUserIdPresent = donor_reg.find_one({'_id': ObjectId(input['user_id'])})
+
+    if isUserIdPresent is not None:
+        obj = donor_reg.update_one({'_id': ObjectId(input['user_id'])}, {
+            '$set': {'name': input['name'],
+                     'serving_distance': input['serving_distance'],
+                     'contact_number': input['contact_number'],
+                     'address': input['address'],
+                     'lat': input['lat'],
+                     'lng': input['lng'],
+                     'place_id': input['place_id']
+                     }}, upsert=False)
+
+        data = dict(input).copy()
+        print(data)
+        return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, data))
+    else:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
+
+
 @app.route('/volunteer/getAvailableFoodList', methods=['POST'])
 def getAvailableFoodListForVolunteer():
     input = request.get_json()
