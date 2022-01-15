@@ -702,6 +702,27 @@ def getFoodItemDetails():
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_obj))
 
 
+@app.route('/volunteer/collect_food', methods=['POST'])
+def collect_food():
+    input = request.get_json()
+    collect_food_col = getCollectionName('collect_food')
+    add_food_col = getCollectionName('add_food')
+
+    add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_id"])})
+
+    if add_food_obj is not None:
+
+        if add_food_obj['status'] == constants.Utils.waiting_for_volunteer:
+
+            id = collect_food_col.insert_one(input).inserted_id
+            obj = add_food_col.update_one({'_id': ObjectId(input['food_id'])}, {
+                '$set': {'status': constants.Utils.pickeup_schedule}}, upsert=False)
+        else:
+            return flask.jsonify(api_response.apiResponse(constants.Utils.already_assigned, False, {}))
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
 @app.route('/logout', methods=['POST'])
 def logout():
     input = request.get_json()
