@@ -17,18 +17,20 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 from math import radians, cos, sin, asin, sqrt
 from datetime import datetime
+from cfg.cfg import get_prod_db, get_dev_db
 
 cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
 firebase_admin.initialize_app(cred)
 
 app = Flask(__name__)
 
-CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
-database_name = "closingtime"
-password = "closingtime"
+# CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
+
+CONNECTION_STRING, db = get_dev_db()
+# CONNECTION_STRING, db = get_prod_db()
 
 client = pymongo.MongoClient(CONNECTION_STRING)
-db = client.get_database('closingtime')
+db = client.get_database(db)
 
 
 # user_collection = pymongo.collection.Collection(db, 'user_collection')
@@ -624,6 +626,36 @@ def accept_food():
         tokens.append(item['firebase_token'])
 
     send_notifications_to_recipients(tokens, input['food_name'], input['quantity'])
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
+@app.route('/recipient/food_delivered', methods=['POST'])
+def food_delivered():
+    input = request.get_json()
+
+    # recipient_reg = getCollectionName('recipient_registration')
+    delivered_food = getCollectionName('delivered_food')
+    add_food = getCollectionName('add_food')
+    # collect_food = getCollectionName('collect_food')
+    # user_firebase_token_col = getCollectionName('user_firebase_token')
+    # volunteer_registration_col = getCollectionName('volunteer_registration')
+
+    # collect_food_obj = collect_food.find_one({"food_item_id": input["food_item_id"]})
+    #
+    # data = dict(input)
+    # data.update({"volunteer_id"})
+
+    delivered_food.insert_one(input)
+
+    add_food.update_one({
+        '_id': ObjectId(input['food_item_id'])
+    }, {
+        '$set': {
+            'isFoodAccepted': True,
+            'status': constants.Utils.delivered
+        }
+    }, upsert=False)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 

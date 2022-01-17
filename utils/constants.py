@@ -17,6 +17,7 @@ class Utils:
     expired = "Expired"
     waiting_for_volunteer = "Waiting for pickup"
     pickeup_schedule = "Pick up scheduled"
+    delivered = "Delivered"
     already_assigned = "Already assigned to another Rider"
     miles = 10
 
