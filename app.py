@@ -577,7 +577,8 @@ def accept_food():
     # recipient_reg = getCollectionName('recipient_registration')
     accept_food = getCollectionName('accept_food')
     add_food = getCollectionName('add_food')
-    user_firebase_token = getCollectionName('user_firebase_token')
+    user_firebase_token_col = getCollectionName('user_firebase_token')
+    volunteer_registration_col = getCollectionName('volunteer_registration')
 
     accept_food.insert_one(input)
 
@@ -590,11 +591,39 @@ def accept_food():
         }
     }, upsert=False)
 
-    obj = user_firebase_token.find_one({"user_id": input["donor_user_id"]})
+    obj = user_firebase_token_col.find_one({"user_id": input["donor_user_id"]})
 
     if obj is not None:
         if not obj['firebase_token']:
             send_notification_to_donor(obj['firebase_token'], input["business_name"])
+
+    volunteer_obj = volunteer_registration_col.find({})
+
+    volunteer_obj_list = list(volunteer_obj)
+
+    ids = list()
+    # food_donations_nearby_recipients_obj_list = list()
+
+    for item in volunteer_obj_list:
+        miles = dist(float(input['pick_up_lat']), float(input['pick_up_lng']), float(item['lat']), float(item['lng']))
+        # print(miles)
+        if miles <= float(item['serving_distance']):
+            # print(item)
+            ids.append(str(ObjectId(item['_id'])))
+
+    print(ids)
+
+    recipients_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": ids}})
+
+    tokens = list()
+
+    for item in recipients_firebase_tokens:
+        print(item)
+
+        print(item['firebase_token'])
+        tokens.append(item['firebase_token'])
+
+    send_notifications_to_recipients(tokens, input['food_name'], input['quantity'])
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
@@ -674,7 +703,8 @@ def getAvailableFoodListForVolunteer():
     add_food_col = getCollectionName('add_food')
 
     waiting_for_volunteer_foods = add_food_col.find(
-        {'isFoodAccepted': input['isFoodAccepted'], "status": constants.Utils.waiting_for_volunteer})  # true
+        {'isFoodAccepted': {"$in": input['isFoodAccepted']},
+         "status": {"$in": [constants.Utils.waiting_for_volunteer,  constants.Utils.pickeup_schedule]}})
 
     present_date = get_today_date()
 
@@ -684,7 +714,7 @@ def getAvailableFoodListForVolunteer():
 
     if len(waiting_for_volunteer_food_list):
         accepted_food_col = getCollectionName("accept_food")
-        recipient_registration_col = getCollectionName("recipient_registration")
+        # recipient_registration_col = getCollectionName("recipient_registration")
 
         for obj in waiting_for_volunteer_food_list:
             # obj = dict(x)
