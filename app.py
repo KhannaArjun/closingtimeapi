@@ -593,6 +593,8 @@ def accept_food():
         }
     }, upsert=False)
 
+    add_food_obj = add_food.find_one({'_id': ObjectId(input['food_item_id'])})
+
     obj = user_firebase_token_col.find_one({"user_id": input["donor_user_id"]})
 
     if obj is not None:
@@ -607,7 +609,7 @@ def accept_food():
     # food_donations_nearby_recipients_obj_list = list()
 
     for item in volunteer_obj_list:
-        miles = dist(float(input['pick_up_lat']), float(input['pick_up_lng']), float(item['lat']), float(item['lng']))
+        miles = dist(float(add_food_obj['pick_up_lat']), float(add_food_obj['pick_up_lng']), float(item['lat']), float(item['lng']))
         # print(miles)
         if miles <= float(item['serving_distance']):
             # print(item)
@@ -625,7 +627,7 @@ def accept_food():
         print(item['firebase_token'])
         tokens.append(item['firebase_token'])
 
-    send_notifications_to_recipients(tokens, input['food_name'], input['quantity'])
+    send_notifications_to_volunteers(tokens, add_food_obj['food_name'])
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
@@ -735,12 +737,14 @@ def getAvailableFoodListForVolunteer():
     add_food_col = getCollectionName('add_food')
 
     waiting_for_volunteer_foods = add_food_col.find(
-        {'isFoodAccepted': {"$in": input['isFoodAccepted']},
+        {'isFoodAccepted': {"$in": [input['isFoodAccepted']]},
          "status": {"$in": [constants.Utils.waiting_for_volunteer,  constants.Utils.pickeup_schedule]}})
 
     present_date = get_today_date()
 
     waiting_for_volunteer_food_list = list(waiting_for_volunteer_foods)
+
+    print(waiting_for_volunteer_food_list)
 
     foodList = []
 
@@ -829,6 +833,26 @@ def send_notifications_to_recipients(ids, food_name, quantity):
     # ]
 
     notification = messaging.Notification(title=food_name, body=quantity)
+
+    # See documentation on defining a message payload.
+    message = messaging.MulticastMessage(
+        notification=notification,
+        tokens=ids,
+    )
+    response = messaging.send_multicast(message)
+    if response.failure_count > 0:
+        responses = response.responses
+        failed_tokens = []
+        for idx, resp in enumerate(responses):
+            if not resp.success:
+                # The order of responses corresponds to the order of the registration tokens.
+                failed_tokens.append(ids[idx])
+        print('List of tokens that caused failures: {0}'.format(failed_tokens))
+
+
+def send_notifications_to_volunteers(ids, food_name):
+
+    notification = messaging.Notification(title=food_name, body= "New food item has been added in your locality, pick up food now?")
 
     # See documentation on defining a message payload.
     message = messaging.MulticastMessage(
