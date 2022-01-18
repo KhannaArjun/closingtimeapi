@@ -637,7 +637,7 @@ def food_delivered():
     input = request.get_json()
 
     # recipient_reg = getCollectionName('recipient_registration')
-    delivered_food = getCollectionName('delivered_food')
+    # delivered_food = getCollectionName('delivered_food')
     add_food = getCollectionName('add_food')
     # collect_food = getCollectionName('collect_food')
     # user_firebase_token_col = getCollectionName('user_firebase_token')
@@ -648,7 +648,7 @@ def food_delivered():
     # data = dict(input)
     # data.update({"volunteer_id"})
 
-    delivered_food.insert_one(input)
+    # delivered_food.insert_one(input)
 
     add_food.update_one({
         '_id': ObjectId(input['food_item_id'])
