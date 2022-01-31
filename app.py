@@ -530,7 +530,7 @@ def getAvailableFoodList():
                 miles = dist(input['recipient_lat'], input['recipient_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
 
                 if miles < constants.Utils.miles:
-                    obj.update({"distance": '%.2f'%(miles)})
+                    obj.update({"distance": '%.2f' % (miles)})
                     foodList.append(obj)
 
     if len(accepted_food_list):
@@ -546,7 +546,7 @@ def getAvailableFoodList():
                 i.update({'id': str(i['_id'])})
                 del i['_id']
                 miles = dist(input['recipient_lat'], input['recipient_lng'], i['pick_up_lat'], i['pick_up_lng'])
-                i.update({"distance": '%.2f'%(miles)})
+                i.update({"distance": '%.2f' % (miles)})
                 foodList.append(i)
 
         # print(foodList)
@@ -609,7 +609,8 @@ def accept_food():
     # food_donations_nearby_recipients_obj_list = list()
 
     for item in volunteer_obj_list:
-        miles = dist(float(add_food_obj['pick_up_lat']), float(add_food_obj['pick_up_lng']), float(item['lat']), float(item['lng']))
+        miles = dist(float(add_food_obj['pick_up_lat']), float(add_food_obj['pick_up_lng']), float(item['lat']),
+                     float(item['lng']))
         # print(miles)
         if miles <= float(item['serving_distance']):
             # print(item)
@@ -738,7 +739,7 @@ def getAvailableFoodListForVolunteer():
 
     waiting_for_volunteer_foods = add_food_col.find(
         {'isFoodAccepted': {"$in": [input['isFoodAccepted']]},
-         "status": {"$in": [constants.Utils.waiting_for_volunteer,  constants.Utils.pickeup_schedule]}})
+         "status": {"$in": [constants.Utils.waiting_for_volunteer, constants.Utils.pickeup_schedule]}})
 
     present_date = get_today_date()
 
@@ -759,11 +760,11 @@ def getAvailableFoodListForVolunteer():
                 # obj.update({"status": constants.Utils.expired})
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
-                accepted_food_obj = accepted_food_col.find_one({"food_item_id" : obj['id']})
-                obj.update({"recipient_user_id" : accepted_food_obj["recipient_user_id"]})
+                accepted_food_obj = accepted_food_col.find_one({"food_item_id": obj['id']})
+                obj.update({"recipient_user_id": accepted_food_obj["recipient_user_id"]})
                 miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
                 if miles <= float(input['serving_distance']):
-                    obj.update({"distance": '%.2f'%(miles)})
+                    obj.update({"distance": '%.2f' % (miles)})
                     foodList.append(obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
@@ -780,16 +781,22 @@ def getFoodItemDetails():
 
     final_obj = dict()
     if recipient_obj is not None:
-        final_obj.update({ "recipient_name": recipient_obj['name'], "recipient_business_name": recipient_obj['business_name'],
-                           "recipient_contact_number": recipient_obj['contact_number'], "code": recipient_obj['code'], "recipient_address": recipient_obj['address'],
-                           "recipient_lat": recipient_obj['lat'], "recipient_lng": recipient_obj['lng']})
+        final_obj.update(
+            {"recipient_name": recipient_obj['name'], "recipient_business_name": recipient_obj['business_name'],
+             "recipient_contact_number": recipient_obj['contact_number'], "code": recipient_obj['code'],
+             "recipient_address": recipient_obj['address'],
+             "recipient_lat": recipient_obj['lat'], "recipient_lng": recipient_obj['lng']})
 
         if donor_obj is not None:
+            distance_in_miles = dist(float(recipient_obj['lat']), float(recipient_obj['lng']), float(donor_obj['lat']),
+                                     float(donor_obj['lng']))
             final_obj.update(
                 {"donor_name": donor_obj['name'], "donor_business_name": donor_obj['business_name'],
                  "donor_contact_number": donor_obj['contact_number'],
                  "donor_address": donor_obj['address'],
-                 "donor_lat": donor_obj['lat'], "donor_lng": donor_obj['lng']})
+                 "donor_lat": donor_obj['lat'], "donor_lng": donor_obj['lng'], "distance": '%.2f' % (distance_in_miles)
+                 }
+            )
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_obj))
 
@@ -851,8 +858,8 @@ def send_notifications_to_recipients(ids, food_name, quantity):
 
 
 def send_notifications_to_volunteers(ids, food_name):
-
-    notification = messaging.Notification(title=food_name, body= "New food item has been added in your locality, pick up food now?")
+    notification = messaging.Notification(title=food_name,
+                                          body="New food item has been added in your locality, pick up food now?")
 
     # See documentation on defining a message payload.
     message = messaging.MulticastMessage(
