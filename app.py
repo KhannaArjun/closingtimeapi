@@ -397,7 +397,27 @@ def modify_food_item():
     return flask.jsonify(api_response.apiResponse(constants.Utils.failed, False, {}))
 
 
-# *******************************************         recipient           *****************************************************
+@app.route('/food_donor/getAllFoodsByDonor', methods=['POST'])
+def getAllFoodsByDonor():
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+
+    data = add_food_col.find({'user_id': str(input['user_id'])})
+
+    foodList = []
+    array = list(data)
+    if len(array):
+        for obj in array:
+            # obj = dict(x)
+            obj.update({'id': str(obj['_id'])})
+            del obj['_id']
+            foodList.append(obj)
+        array.clear()
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
+
+
+# *******************************************         recipient           **************************************
 
 
 @app.route('/recipient/registration', methods=['POST'])
@@ -680,6 +700,35 @@ def send_notif():
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
 
+@app.route('/recipient/getAllFoodsByRecipient', methods=['POST'])
+def getAllFoodsByRecipient():
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+    accept_food_col = getCollectionName('accept_food')
+
+    accept_food_obj = accept_food_col.find({'recipient_user_id': str(input['user_id'])})
+
+    food_ids = []
+    array = list(accept_food_obj)
+    if len(array):
+        for obj in array:
+            food_ids.append(ObjectId(obj['food_item_id']))
+        array.clear()
+
+    data = add_food_col.find({'_id': {"$in": food_ids}})
+
+    food_list = list(data)
+    final_food_list = []
+    if len(food_list):
+        for obj in food_list:
+            obj.update({'id': str(obj['_id'])})
+            del obj['_id']
+            final_food_list.append(obj)
+        array.clear()
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_food_list))
+
+
 # ***************************************** volunteer *****************************************
 
 @app.route('/volunteer/registration', methods=['POST'])
@@ -820,6 +869,35 @@ def collect_food():
             return flask.jsonify(api_response.apiResponse(constants.Utils.already_assigned, False, {}))
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
+@app.route('/volunteer/getAllFoodsByVolunteer', methods=['POST'])
+def getAllFoodsByVolunteer():
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+    collect_food_col = getCollectionName('collect_food')
+
+    collect_food_col_obj = collect_food_col.find({'volunteer_user_id': str(input['user_id'])})
+
+    food_ids = []
+    array = list(collect_food_col_obj)
+    if len(array):
+        for obj in array:
+            food_ids.append(ObjectId(obj['food_item_id']))
+        array.clear()
+
+    data = add_food_col.find({'_id': {"$in": food_ids}})
+
+    food_list = list(data)
+    final_food_list = []
+    if len(food_list):
+        for obj in food_list:
+            obj.update({'id': str(obj['_id'])})
+            del obj['_id']
+            final_food_list.append(obj)
+        array.clear()
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_food_list))
 
 
 @app.route('/logout', methods=['POST'])
