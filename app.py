@@ -404,14 +404,18 @@ def getAllFoodsByDonor():
 
     data = add_food_col.find({'user_id': str(input['user_id'])})
 
+    present_date = get_today_date()
+
     foodList = []
     array = list(data)
     if len(array):
         for obj in array:
             # obj = dict(x)
-            obj.update({'id': str(obj['_id'])})
-            del obj['_id']
-            foodList.append(obj)
+            pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
+            if pick_up_date < present_date:
+                obj.update({'id': str(obj['_id'])})
+                del obj['_id']
+                foodList.append(obj)
         array.clear()
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, foodList))
