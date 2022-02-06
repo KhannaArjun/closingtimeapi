@@ -388,6 +388,7 @@ def modify_food_item():
             'quantity': input['quantity'],
             'food_ingredients': input['food_ingredients'],
             'pick_up_date': input['pick_up_date'],
+            'pick_up_time': input['pick_up_time'],
             'allergen': input['allergen'],
             'image': input['image']
         })
