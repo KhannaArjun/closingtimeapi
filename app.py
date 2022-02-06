@@ -900,6 +900,8 @@ def getAllFoodsByVolunteer():
             del obj['_id']
             collect_food_col_objct = collect_food_col.find_one({"volunteer_user_id" : str(input['user_id']), "food_item_id": str(obj['id'])})
             obj.update({"recipient_user_id": collect_food_col_objct['recipient_user_id']})
+            miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
+            obj.update({"distance": '%.2f' % (miles)})
             final_food_list.append(obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_food_list))
