@@ -888,7 +888,7 @@ def getAllFoodsByVolunteer():
     if len(array):
         for obj in array:
             food_ids.append(ObjectId(obj['food_item_id']))
-        array.clear()
+        # array.clear()
 
     data = add_food_col.find({'_id': {"$in": food_ids}})
 
@@ -898,8 +898,9 @@ def getAllFoodsByVolunteer():
         for obj in food_list:
             obj.update({'id': str(obj['_id'])})
             del obj['_id']
+            collect_food_col_objct = collect_food_col.find_one({"volunteer_user_id" : str(input['user_id']), "food_item_id": str(obj['id'])})
+            obj.update({"recipient_user_id": collect_food_col_objct['recipient_user_id']})
             final_food_list.append(obj)
-        array.clear()
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_food_list))
 
