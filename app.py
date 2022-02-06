@@ -382,7 +382,7 @@ def modify_food_item():
     data = add_food_col.find_one({'user_id': str(input['user_id']), '_id': ObjectId(input['id'])})
 
     if data is not None:
-        add_food_col.update_one({'user_id': input['user_id']}, {
+        val = add_food_col.update_one({'user_id': input['user_id']}, {
             'food_name': input['food_name'],
             'food_desc': input['food_desc'],
             'quantity': input['quantity'],
@@ -393,7 +393,13 @@ def modify_food_item():
             'image': input['image']
         })
 
-        return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, {}))
+        data = add_food_col.find_one({'user_id': str(input['user_id']), '_id': ObjectId(input['id'])})
+
+        obj = dict(data)
+        obj.update({"id": input['id']})
+        del obj['_id']
+
+        return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, obj))
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.failed, False, {}))
 
