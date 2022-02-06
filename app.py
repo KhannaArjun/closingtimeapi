@@ -382,16 +382,18 @@ def modify_food_item():
     data = add_food_col.find_one({'user_id': str(input['user_id']), '_id': ObjectId(input['id'])})
 
     if data is not None:
-        val = add_food_col.update_one({'user_id': input['user_id']}, {
-            'food_name': input['food_name'],
-            'food_desc': input['food_desc'],
-            'quantity': input['quantity'],
-            'food_ingredients': input['food_ingredients'],
-            'pick_up_date': input['pick_up_date'],
-            'pick_up_time': input['pick_up_time'],
-            'allergen': input['allergen'],
-            'image': input['image']
-        })
+        val = add_food_col.update_one({'_id': ObjectId(input['id'])}, {
+            '$set': {'food_name': input['food_name'],
+                     'food_desc': input['food_desc'],
+                     'quantity': input['quantity'],
+                     'food_ingredients': input['food_ingredients'],
+                     'pick_up_date': input['pick_up_date'],
+                     'pick_up_time': input['pick_up_time'],
+                     'allergen': input['allergen'],
+                     'image': input['image']}
+        }, upsert=False)
+
+        # print(dict(val))
 
         data = add_food_col.find_one({'user_id': str(input['user_id']), '_id': ObjectId(input['id'])})
 
@@ -399,9 +401,11 @@ def modify_food_item():
         obj.update({"id": input['id']})
         del obj['_id']
 
-        return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, obj))
+        obj_list = list()
+        obj_list.append(obj)
+        return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, obj_list))
 
-    return flask.jsonify(api_response.apiResponse(constants.Utils.failed, False, {}))
+    return flask.jsonify(api_response.apiResponse(constants.Utils.failed, False, []))
 
 
 @app.route('/food_donor/getAllFoodsByDonor', methods=['POST'])
@@ -905,7 +909,8 @@ def getAllFoodsByVolunteer():
         for obj in food_list:
             obj.update({'id': str(obj['_id'])})
             del obj['_id']
-            collect_food_col_objct = collect_food_col.find_one({"volunteer_user_id" : str(input['user_id']), "food_item_id": str(obj['id'])})
+            collect_food_col_objct = collect_food_col.find_one(
+                {"volunteer_user_id": str(input['user_id']), "food_item_id": str(obj['id'])})
             obj.update({"recipient_user_id": collect_food_col_objct['recipient_user_id']})
             miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
             obj.update({"distance": '%.2f' % (miles)})
