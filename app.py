@@ -723,6 +723,8 @@ def getAllFoodsByRecipient():
 
     accept_food_obj = accept_food_col.find({'recipient_user_id': str(input['user_id'])})
 
+    present_date = get_today_date()
+
     food_ids = []
     array = list(accept_food_obj)
     if len(array):
@@ -736,9 +738,11 @@ def getAllFoodsByRecipient():
     final_food_list = []
     if len(food_list):
         for obj in food_list:
-            obj.update({'id': str(obj['_id'])})
-            del obj['_id']
-            final_food_list.append(obj)
+            pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
+            if pick_up_date < present_date:
+                obj.update({'id': str(obj['_id'])})
+                del obj['_id']
+                final_food_list.append(obj)
         array.clear()
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_food_list))
