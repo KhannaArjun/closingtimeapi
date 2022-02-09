@@ -423,7 +423,7 @@ def getAllFoodsByDonor():
         for obj in array:
             # obj = dict(x)
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            if pick_up_date < present_date:
+            if pick_up_date < present_date or obj['status'] == constants.Utils.delivered:
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
                 foodList.append(obj)
@@ -739,7 +739,7 @@ def getAllFoodsByRecipient():
     if len(food_list):
         for obj in food_list:
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            if pick_up_date < present_date:
+            if pick_up_date < present_date or obj['status'] == constants.Utils.delivered:
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
                 final_food_list.append(obj)
@@ -898,6 +898,8 @@ def getAllFoodsByVolunteer():
 
     collect_food_col_obj = collect_food_col.find({'volunteer_user_id': str(input['user_id'])})
 
+    present_date = get_today_date()
+
     food_ids = []
     array = list(collect_food_col_obj)
     if len(array):
@@ -911,14 +913,16 @@ def getAllFoodsByVolunteer():
     final_food_list = []
     if len(food_list):
         for obj in food_list:
-            obj.update({'id': str(obj['_id'])})
-            del obj['_id']
-            collect_food_col_objct = collect_food_col.find_one(
-                {"volunteer_user_id": str(input['user_id']), "food_item_id": str(obj['id'])})
-            obj.update({"recipient_user_id": collect_food_col_objct['recipient_user_id']})
-            miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
-            obj.update({"distance": '%.2f' % (miles)})
-            final_food_list.append(obj)
+            pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
+            if pick_up_date < present_date or obj['status'] == constants.Utils.delivered:
+                obj.update({'id': str(obj['_id'])})
+                del obj['_id']
+                collect_food_col_objct = collect_food_col.find_one(
+                    {"volunteer_user_id": str(input['user_id']), "food_item_id": str(obj['id'])})
+                obj.update({"recipient_user_id": collect_food_col_objct['recipient_user_id']})
+                miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
+                obj.update({"distance": '%.2f' % (miles)})
+                final_food_list.append(obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_food_list))
 
