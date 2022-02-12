@@ -354,7 +354,8 @@ def added_food_list():
         for obj in array:
             # obj = dict(x)
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            if pick_up_date >= present_date and obj['status'] != constants.Utils.delivered:
+            # and obj['status'] != constants.Utils.delivered
+            if pick_up_date >= present_date:
                 # obj.update({"status": constants.Utils.expired})
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
@@ -423,7 +424,8 @@ def getAllFoodsByDonor():
         for obj in array:
             # obj = dict(x)
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            if pick_up_date < present_date or obj['status'] == constants.Utils.delivered:
+            # or obj['status'] == constants.Utils.delivered
+            if pick_up_date < present_date:
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
                 foodList.append(obj)
@@ -739,7 +741,8 @@ def getAllFoodsByRecipient():
     if len(food_list):
         for obj in food_list:
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            if pick_up_date < present_date or obj['status'] == constants.Utils.delivered:
+            # or obj['status'] == constants.Utils.delivered
+            if pick_up_date < present_date:
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
                 final_food_list.append(obj)
@@ -914,7 +917,8 @@ def getAllFoodsByVolunteer():
     if len(food_list):
         for obj in food_list:
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            if pick_up_date < present_date or obj['status'] == constants.Utils.delivered:
+            # or obj['status'] == constants.Utils.delivered
+            if pick_up_date < present_date:
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
                 collect_food_col_objct = collect_food_col.find_one(
