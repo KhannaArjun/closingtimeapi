@@ -66,12 +66,12 @@ def index():
 @app.route('/login', methods=['POST'])
 def login():
     input = request.get_json()
-    print(input)
+    # print(input)
     donor_reg = getCollectionName('donor_registration')
     record = donor_reg.find_one({'email': input['email']})
     if record:
         pwd = base64.b64decode(record['password']).decode('utf-8')
-        print(pwd)
+        # print(pwd)
         if pwd == input['password']:
             data = dict(record).copy()
             data.pop('_id')
@@ -90,7 +90,7 @@ def login():
 def isUserExists():
     input = request.get_json()
 
-    print(input)
+    # print(input)
     donor_reg = getCollectionName('donor_registration')
     recipient_reg = getCollectionName('recipient_registration')
     volunteer_reg = getCollectionName('volunteer_registration')
@@ -101,29 +101,29 @@ def isUserExists():
 
     if donor_record is not None:
         data = dict(donor_record).copy()
-        print(data)
+        # print(data)
         data.pop('_id')
         data.update({'user_id': str(donor_record['_id'])})
         updateFirebaseToken(data['user_id'], input['firebase_token'], constants.Utils.donor)
-        print(data)
+        # print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
     if recipient_record is not None:
         data = dict(recipient_record).copy()
-        print(data)
+        # print(data)
         data.pop('_id')
         data.update({'user_id': str(recipient_record['_id'])})
-        print(data)
+        # print(data)
         updateFirebaseToken(data['user_id'], input['firebase_token'], constants.Utils.recipient)
 
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
     if volunteer_record is not None:
         data = dict(volunteer_record).copy()
-        print(data)
+        # print(data)
         data.pop('_id')
         data.update({'user_id': str(volunteer_record['_id'])})
-        print(data)
+        # print(data)
         updateFirebaseToken(data['user_id'], input['firebase_token'], constants.Utils.volunteer)
 
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
@@ -133,7 +133,7 @@ def isUserExists():
 
 def updateFirebaseToken(id, fb_token, role):
     user_firebase_token = getCollectionName('user_firebase_token')
-    print(fb_token)
+    # print(fb_token)
     data = user_firebase_token.find_one({"user_id": id})
 
     if data is not None:
@@ -159,7 +159,7 @@ def sendPush(title, msg, registration_token, dataObject=None):
     # registration token.
     response = messaging.send_multicast(message)
     # Response is a message ID string.
-    print('Successfully sent message:', response)
+    # print('Successfully sent message:', response)
 
 
 # *******************************************         donor           *****************************************************
@@ -171,20 +171,20 @@ def get_user_profile():
 
     donor_reg = getCollectionName('donor_registration')
 
-    print(ObjectId(input['user_id']))
-    print(input['user_id'])
+    # print(ObjectId(input['user_id']))
+    # print(input['user_id'])
 
     isUserIdPresent = donor_reg.find_one({'_id': ObjectId(input['user_id'])})
 
     if isUserIdPresent is None:
         return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
 
-    print(isUserIdPresent)
+    # print(isUserIdPresent)
     data = dict(isUserIdPresent).copy()
     # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(isUserIdPresent['_id'])})
-    print(data)
+    # print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
 
 
@@ -204,14 +204,12 @@ def donor_registration():
     data = dict(input).copy()
     data.pop('firebase_token')
     obj = donor_reg.insert_one(data).inserted_id
-    print(obj)
-    print(input)
+
     # data = dict(input).copy()
     # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(obj)})
     save_firebase_token(str(obj), input["firebase_token"], input["role"])
-    print(data)
 
     # pwd = input['password'].encode("utf-8")
     # encoded = base64.b64encode(pwd)
@@ -263,7 +261,6 @@ def update_profile():
         # add_food_col = getCollectionName('add_food')
 
         data = dict(input).copy()
-        print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, data))
     else:
         return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
@@ -297,7 +294,7 @@ def add_food():
             #
             # food_donations_nearby_recipients_obj_list.append(food_donations_nearby_recipients_obj)
 
-    print(ids)
+    # print(ids)
 
     # food_donations_nearby_recipients_col = getCollectionName("food_donations_nearby_recipients")
 
@@ -307,9 +304,9 @@ def add_food():
     tokens = list()
 
     for item in recipients_firebase_tokens:
-        print(item)
-
-        print(item['firebase_token'])
+        # print(item)
+        #
+        # print(item['firebase_token'])
         tokens.append(item['firebase_token'])
 
     send_notifications_to_recipients(tokens, input['food_name'], input['quantity'])
@@ -323,14 +320,14 @@ def test():
 
     objj = user_firebase_token.find({"role": constants.Utils.recipient})
 
-    print(str(objj))
+    # print(str(objj))
 
     l = list(objj)
 
     # print(l)
 
-    for x in l:
-        print(x['firebase_token'])
+    # for x in l:
+    #     # print(x['firebase_token'])
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
@@ -453,14 +450,12 @@ def recipient_registration():
     data = dict(input).copy()
     data.pop('firebase_token')
     obj = recipient_reg.insert_one(data).inserted_id
-    print(obj)
-    print(input)
+
     # data = dict(input).copy()
     # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(obj)})
     save_firebase_token(str(obj), input["firebase_token"], input["role"])
-    print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
 
 
@@ -484,7 +479,6 @@ def update_recipient_profile():
                      }}, upsert=False)
 
         data = dict(input).copy()
-        print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, data))
     else:
         return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
@@ -520,20 +514,17 @@ def get_recipient_user_profile():
     input = request.get_json()
 
     recipient_reg = getCollectionName('recipient_registration')
-    print(ObjectId(input['user_id']))
-    print(input['user_id'])
+
 
     isUserIdPresent = recipient_reg.find_one({'_id': ObjectId(input['user_id'])})
 
     if isUserIdPresent is None:
         return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
 
-    print(isUserIdPresent)
     data = dict(isUserIdPresent).copy()
     # data.pop('password')
     data.pop('_id')
     data.update({'user_id': str(isUserIdPresent['_id'])})
-    print(data)
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
 
 
@@ -576,7 +567,6 @@ def getAvailableFoodList():
 
         accepted_food_obj = add_food_col.find({"_id": {"$in": accepted_food_id_list}})
         accepted_food_obj_list = list(accepted_food_obj)
-        print(accepted_food_obj_list)
         for i in accepted_food_obj_list:
             pick_up_date = datetime.strptime(i['pick_up_date'], "%Y-%m-%d").date()
             if pick_up_date >= present_date:
@@ -653,16 +643,12 @@ def accept_food():
             # print(item)
             ids.append(str(ObjectId(item['_id'])))
 
-    print(ids)
 
     recipients_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": ids}})
 
     tokens = list()
 
     for item in recipients_firebase_tokens:
-        print(item)
-
-        print(item['firebase_token'])
         tokens.append(item['firebase_token'])
 
     send_notifications_to_volunteers(tokens, add_food_obj['food_name'])
@@ -712,7 +698,6 @@ def send_notif():
 
     response = messaging.send(message)
     # Response is a message ID string.
-    print('Successfully sent message:', response)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
@@ -772,7 +757,6 @@ def volunteer_registration():
     data.pop('_id')
     data.update({'user_id': str(obj)})
     save_firebase_token(str(obj), input["firebase_token"], input["role"])
-    print(data)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, data))
 
@@ -797,7 +781,6 @@ def volunteer_update_profile():
                      }}, upsert=False)
 
         data = dict(input).copy()
-        print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.updated, False, data))
     else:
         return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {}))
@@ -816,7 +799,6 @@ def getAvailableFoodListForVolunteer():
 
     waiting_for_volunteer_food_list = list(waiting_for_volunteer_foods)
 
-    print(waiting_for_volunteer_food_list)
 
     foodList = []
 
@@ -963,7 +945,6 @@ def send_notifications_to_recipients(ids, food_name, quantity):
             if not resp.success:
                 # The order of responses corresponds to the order of the registration tokens.
                 failed_tokens.append(ids[idx])
-        print('List of tokens that caused failures: {0}'.format(failed_tokens))
 
 
 def send_notifications_to_volunteers(ids, food_name):
@@ -983,7 +964,6 @@ def send_notifications_to_volunteers(ids, food_name):
             if not resp.success:
                 # The order of responses corresponds to the order of the registration tokens.
                 failed_tokens.append(ids[idx])
-        print('List of tokens that caused failures: {0}'.format(failed_tokens))
 
 
 def send_notification_to_donor(token, recipient_name):
@@ -1023,9 +1003,82 @@ def _get_access_token():
         '/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json',
         'https://www.googleapis.com/auth/firebase.messaging')
     access_token_info = credentials.get_access_token()
-    print(access_token_info)
     return access_token_info.access_token
+
+
+# Admin API's
+@app.route('/login_admin', methods=['POST'])
+def login_admin():
+    input = request.get_json()
+    # print(input)
+    admin_cred = getCollectionName('admin_reg')
+    record = admin_cred.find_one({'uname': input['uname']})
+    if record:
+        pwd = base64.b64decode(record['pwd']).decode('utf-8')
+        if pwd == input['pwd']:
+            data = dict(record).copy()
+            data.pop('_id')
+            data.pop('pwd')
+            data.update({'user_id': str(record['_id'])})
+
+            return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+        else:
+            return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
+    else:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
+
+
+@app.route('/admin/get_all_users_list', methods=['GET'])
+def get_all_users_list():
+    # input = request.get_json()
+    donor_reg_list = getCollectionName('donor_registration').find({}, {'_id': False})
+    recipient_reg_list = getCollectionName('recipient_registration').find({}, {'_id': False})
+    volunteer_reg_list = getCollectionName('volunteer_registration').find({}, {'_id': False})
+
+    # print(list(donor_reg_list))
+
+    data = {
+        'donor': list(donor_reg_list),
+        'recipient': list(recipient_reg_list),
+        'volunteer': list(volunteer_reg_list)
+    }
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+
+
+@app.route('/admin/get_all_users_count', methods=['GET'])
+def get_all_users_count():
+    # input = request.get_json()
+    donor_reg_count = getCollectionName('donor_registration').find().count()
+    recipient_reg_count = getCollectionName('recipient_registration').find().count()
+    volunteer_reg_count = getCollectionName('volunteer_registration').find().count()
+
+    data = {
+        'donor_count': str(donor_reg_count),
+        'recipient_count': str(recipient_reg_count),
+        'volunteer_count': str(volunteer_reg_count)
+    }
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+
+
+@app.route('/admin/registration', methods=['POST'])
+def admin_registration():
+    input = request.get_json()
+
+    admin_reg = getCollectionName('admin_reg')
+
+    pwd = input['pwd'].encode("utf-8")
+    encoded = base64.b64encode(pwd)
+    # print(encoded)
+    input['pwd'] = encoded
+
+    data = dict(input)
+    obj = admin_reg.insert_one(data).inserted_id
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
 
 if __name__ == '__main__':
     app.run(debug=True)
+    # app.run()
