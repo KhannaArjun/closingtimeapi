@@ -26,8 +26,8 @@ app = Flask(__name__)
 
 # CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
 
-CONNECTION_STRING, db = get_dev_db()
-# CONNECTION_STRING, db = get_prod_db()
+# CONNECTION_STRING, db = get_dev_db()
+CONNECTION_STRING, db = get_prod_db()
 
 client = pymongo.MongoClient(CONNECTION_STRING)
 db = client.get_database(db)
@@ -1080,5 +1080,5 @@ def admin_registration():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    # app.run()
+    # app.run(debug=True)
+    app.run()
