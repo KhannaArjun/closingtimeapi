@@ -1,5 +1,5 @@
 import base64
-
+from logging import FileHandler, WARNING
 from bson import ObjectId
 from flask import Flask, request
 from flask_mongoengine import MongoEngine
@@ -19,10 +19,14 @@ from math import radians, cos, sin, asin, sqrt
 from datetime import datetime
 from cfg.cfg import get_prod_db, get_dev_db
 
+file_handler = FileHandler('error_logs.txt')
+file_handler.setLevel(WARNING)
+
 cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
 firebase_admin.initialize_app(cred)
 
 app = Flask(__name__)
+app.logger.addHandler(file_handler)
 
 # CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
 
