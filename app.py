@@ -30,6 +30,8 @@ app.logger.addHandler(file_handler)
 
 # CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
 
+# pushed to prod
+
 # CONNECTION_STRING, db = get_dev_db()
 CONNECTION_STRING, db = get_prod_db()
 
