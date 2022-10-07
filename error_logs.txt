@@ -1,0 +1,98 @@
+Exception on /admin/get_volunteer_trips [GET]
+Traceback (most recent call last):
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 2073, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1518, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1516, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1502, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/app.py", line 1079, in get_volunteer_trips
+    data = collect_food_list.aggregate([
+AttributeError: 'Cursor' object has no attribute 'aggregate'
+Exception on /admin/get_volunteer_trips [GET]
+Traceback (most recent call last):
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 2073, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1518, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1516, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1502, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/app.py", line 1079, in get_volunteer_trips
+    data = collect_food_list.aggregate([
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/collection.py", line 2502, in aggregate
+    return self._aggregate(_CollectionAggregationCommand,
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/collection.py", line 2419, in _aggregate
+    return self.__database.client._retryable_read(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/mongo_client.py", line 1525, in _retryable_read
+    return func(session, server, sock_info, secondary_ok)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/aggregation.py", line 137, in get_cursor
+    result = sock_info.command(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/pool.py", line 726, in command
+    self._raise_connection_failure(error)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/pool.py", line 710, in command
+    return command(self, dbname, spec, secondary_ok,
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/network.py", line 121, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/message.py", line 743, in _op_msg
+    return _op_msg_uncompressed(
+bson.errors.InvalidDocument: cannot encode object: {'$_id'}, of type: <class 'set'>
+Exception on /admin/get_volunteer_trips [GET]
+Traceback (most recent call last):
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 2073, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1518, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1516, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1502, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/app.py", line 1079, in get_volunteer_trips
+    data = collect_food_list.aggregate([
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/collection.py", line 2502, in aggregate
+    return self._aggregate(_CollectionAggregationCommand,
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/collection.py", line 2419, in _aggregate
+    return self.__database.client._retryable_read(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/mongo_client.py", line 1525, in _retryable_read
+    return func(session, server, sock_info, secondary_ok)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/aggregation.py", line 137, in get_cursor
+    result = sock_info.command(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/pool.py", line 726, in command
+    self._raise_connection_failure(error)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/pool.py", line 710, in command
+    return command(self, dbname, spec, secondary_ok,
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/network.py", line 121, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/message.py", line 743, in _op_msg
+    return _op_msg_uncompressed(
+bson.errors.InvalidDocument: cannot encode object: {'$volunteer_user_id'}, of type: <class 'set'>
+Exception on /admin/get_volunteer_trips [GET]
+Traceback (most recent call last):
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 2073, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1518, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1516, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/flask/app.py", line 1502, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/app.py", line 1079, in get_volunteer_trips
+    data = collect_food_list.aggregate([
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/collection.py", line 2502, in aggregate
+    return self._aggregate(_CollectionAggregationCommand,
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/collection.py", line 2419, in _aggregate
+    return self.__database.client._retryable_read(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/mongo_client.py", line 1525, in _retryable_read
+    return func(session, server, sock_info, secondary_ok)
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/aggregation.py", line 137, in get_cursor
+    result = sock_info.command(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/pool.py", line 710, in command
+    return command(self, dbname, spec, secondary_ok,
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/network.py", line 161, in command
+    helpers._check_command_response(
+  File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/helpers.py", line 167, in _check_command_response
+    raise OperationFailure(errmsg, code, response, max_wire_version)
+pymongo.errors.OperationFailure: The field 'volunteer_id' must be an accumulator object, full error: {'ok': 0.0, 'errmsg': "The field 'volunteer_id' must be an accumulator object", 'code': 40234, 'codeName': 'Location40234', '$clusterTime': {'clusterTime': Timestamp(1655809268, 8), 'signature': {'hash': b'J\x02\r\xb3\xae\xd4\xcb\xe9\xa5C\xd1\x88\xe5\x0f\xe8\xe6w\x03\xce\xf2', 'keyId': 7051609200723492877}}, 'operationTime': Timestamp(1655809268, 8)}

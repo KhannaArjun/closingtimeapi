@@ -18,6 +18,7 @@ from firebase_admin import credentials, messaging
 from math import radians, cos, sin, asin, sqrt
 from datetime import datetime
 from cfg.cfg import get_prod_db, get_dev_db
+import pytz
 
 file_handler = FileHandler('error_logs.txt')
 file_handler.setLevel(WARNING)
@@ -30,8 +31,7 @@ app.logger.addHandler(file_handler)
 
 # CONNECTION_STRING = "mongodb+srv://closingtime:closingtime@closingtime.1bd7w.mongodb.net/closingtime?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE"
 
-# pushed to prod
-
+#to debug comment prod db
 # CONNECTION_STRING, db = get_dev_db()
 CONNECTION_STRING, db = get_prod_db()
 
@@ -521,7 +521,6 @@ def get_recipient_user_profile():
 
     recipient_reg = getCollectionName('recipient_registration')
 
-
     isUserIdPresent = recipient_reg.find_one({'_id': ObjectId(input['user_id'])})
 
     if isUserIdPresent is None:
@@ -602,7 +601,7 @@ def getAvailableFoodList():
 
 
 def get_today_date():
-    return datetime.now().date()
+    return datetime.now(pytz.timezone('US/Eastern')).date()
 
 
 @app.route('/recipient/accept_food', methods=['POST'])
@@ -648,7 +647,6 @@ def accept_food():
         if miles <= float(item['serving_distance']):
             # print(item)
             ids.append(str(ObjectId(item['_id'])))
-
 
     recipients_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": ids}})
 
@@ -804,7 +802,6 @@ def getAvailableFoodListForVolunteer():
     present_date = get_today_date()
 
     waiting_for_volunteer_food_list = list(waiting_for_volunteer_foods)
-
 
     foodList = []
 
@@ -1037,16 +1034,43 @@ def login_admin():
 @app.route('/admin/get_all_users_list', methods=['GET'])
 def get_all_users_list():
     # input = request.get_json()
+    collect_food_list = getCollectionName('collect_food')
     donor_reg_list = getCollectionName('donor_registration').find({}, {'_id': False})
     recipient_reg_list = getCollectionName('recipient_registration').find({}, {'_id': False})
-    volunteer_reg_list = getCollectionName('volunteer_registration').find({}, {'_id': False})
+    volunteer_reg = getCollectionName('volunteer_registration')
+    volunteer_reg_list = volunteer_reg.find({}, {'_id': False})
 
     # print(list(donor_reg_list))
+
+    volunteers_list = collect_food_list.aggregate([
+        {
+            '$group':
+                {
+                    '_id': '$volunteer_user_id',
+                    'orders_collected': {'$sum': 1}
+                }
+        }
+    ])
+
+    final_data = []
+
+    for i in volunteers_list:
+        volunteer_profile = volunteer_reg.find_one({'_id': ObjectId(i['_id'])}, {'_id': False})
+        print(volunteer_profile['name'], volunteer_profile['email'])
+
+        data = {
+            "volunteer_id": i['_id'],
+            "name": str(volunteer_profile['name']),
+            "email": str(volunteer_profile['email']),
+            "orders_collected": i['orders_collected']
+        }
+        final_data.append(data)
 
     data = {
         'donor': list(donor_reg_list),
         'recipient': list(recipient_reg_list),
-        'volunteer': list(volunteer_reg_list)
+        'volunteer': list(volunteer_reg_list),
+        "volunteers_profile_list": final_data
     }
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
@@ -1066,6 +1090,41 @@ def get_all_users_count():
     }
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+
+
+@app.route('/admin/get_volunteer_trips', methods=['GET'])
+def get_volunteer_trips():
+    # input = request.get_json()
+    collect_food_list = getCollectionName('collect_food')
+    donor_reg_list = getCollectionName('donor_registration').find({}, {'_id': False})
+    recipient_reg_list = getCollectionName('recipient_registration').find({}, {'_id': False})
+    volunteer_reg_list = getCollectionName('volunteer_registration')
+
+    volunteers_list = collect_food_list.aggregate([
+        {
+            '$group':
+                {
+                    '_id': '$volunteer_user_id',
+                    'orders_collected': {'$sum': 1}
+                }
+        }
+    ])
+
+    final_data = []
+
+    for i in volunteers_list:
+        volunteer_profile = volunteer_reg_list.find_one({'_id': ObjectId(i['_id'])}, {'_id': False})
+        print(volunteer_profile['name'], volunteer_profile['email'])
+
+        data = {
+            "volunteer_id": i['_id'],
+            "name": str(volunteer_profile['name']),
+            "email": str(volunteer_profile['email']),
+            "orders_collected": i['orders_collected']
+        }
+        final_data.append(data)
+
+    return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_data))
 
 
 @app.route('/admin/registration', methods=['POST'])
