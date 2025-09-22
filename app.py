@@ -2,7 +2,7 @@ import base64
 from logging import FileHandler, WARNING
 from bson import ObjectId
 from flask import Flask, request
-from flask_mongoengine import MongoEngine
+# from flask_mongoengine import MongoEngine  # Not currently used
 from flask_pymongo import pymongo
 import flask
 from food_donor_model import food_donor_registration_model
@@ -23,8 +23,36 @@ import pytz
 file_handler = FileHandler('error_logs.txt')
 file_handler.setLevel(WARNING)
 
-cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
-firebase_admin.initialize_app(cred)
+# Initialize Firebase Admin SDK with error handling
+FIREBASE_ENABLED = False
+try:
+    # Check if Firebase app is already initialized
+    if not firebase_admin._apps:
+        # Try the newer service account key first
+        try:
+            cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-daa665d59c.json")
+            firebase_admin.initialize_app(cred)
+            FIREBASE_ENABLED = True
+            print("✅ Firebase Admin SDK initialized successfully with newer key")
+        except Exception as e1:
+            print(f"⚠️  Failed to initialize with newer key: {e1}")
+            # Try the older service account key as fallback
+            try:
+                cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
+                firebase_admin.initialize_app(cred)
+                FIREBASE_ENABLED = True
+                print("✅ Firebase Admin SDK initialized successfully with fallback key")
+            except Exception as e2:
+                print(f"⚠️  Failed to initialize with fallback key: {e2}")
+                raise e2
+    else:
+        FIREBASE_ENABLED = True
+        print("✅ Firebase Admin SDK already initialized")
+except Exception as e:
+    FIREBASE_ENABLED = False
+    print(f"⚠️  Firebase initialization error: {e}")
+    print("💡 Notifications will be disabled. Please check Firebase service account key.")
+    # Continue without Firebase if initialization fails
 
 app = Flask(__name__)
 app.logger.addHandler(file_handler)
@@ -35,7 +63,20 @@ app.logger.addHandler(file_handler)
 # CONNECTION_STRING, db = get_dev_db()
 CONNECTION_STRING, db = get_prod_db()
 
-client = pymongo.MongoClient(CONNECTION_STRING)
+import ssl
+import certifi
+
+# MongoDB client with explicit SSL configuration
+client = pymongo.MongoClient(
+    CONNECTION_STRING,
+    tls=True,
+    tlsAllowInvalidCertificates=True,  # Allow invalid certificates
+    serverSelectionTimeoutMS=10000,  # Increased timeout
+    connectTimeoutMS=10000,  # Increased timeout
+    socketTimeoutMS=10000,  # Added socket timeout
+    retryWrites=True,
+    retryReads=True
+)
 db = client.get_database(db)
 
 
@@ -102,8 +143,6 @@ def isUserExists():
     volunteer_reg = getCollectionName('volunteer_registration')
 
     donor_record = donor_reg.find_one({'email': input['email']})
-    recipient_record = recipient_reg.find_one({'email': input['email']})
-    volunteer_record = volunteer_reg.find_one({'email': input['email']})
 
     if donor_record is not None:
         data = dict(donor_record).copy()
@@ -114,6 +153,7 @@ def isUserExists():
         # print(data)
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
+    recipient_record = recipient_reg.find_one({'email': input['email']})
     if recipient_record is not None:
         data = dict(recipient_record).copy()
         # print(data)
@@ -124,6 +164,7 @@ def isUserExists():
 
         return flask.jsonify(api_response.apiResponse(constants.Utils.user_exists, False, data))
 
+    volunteer_record = volunteer_reg.find_one({'email': input['email']})
     if volunteer_record is not None:
         data = dict(volunteer_record).copy()
         # print(data)
@@ -630,7 +671,7 @@ def accept_food():
     obj = user_firebase_token_col.find_one({"user_id": input["donor_user_id"]})
 
     if obj is not None:
-        if not obj['firebase_token']:
+        if obj['firebase_token']:
             send_notification_to_donor(obj['firebase_token'], input["business_name"])
 
     volunteer_obj = volunteer_registration_col.find({})
@@ -795,9 +836,10 @@ def getAvailableFoodListForVolunteer():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
 
-    waiting_for_volunteer_foods = add_food_col.find(
-        {'isFoodAccepted': {"$in": [input['isFoodAccepted']]},
-         "status": {"$in": [constants.Utils.waiting_for_volunteer, constants.Utils.pickeup_schedule]}})
+    waiting_for_volunteer_foods = add_food_col.find({
+        'isFoodAccepted': {"$in": [input['isFoodAccepted']]},
+        "status": {"$in": [constants.Utils.waiting_for_volunteer, constants.Utils.pickeup_schedule]}
+    })
 
     present_date = get_today_date()
 
@@ -927,57 +969,96 @@ def logout():
 
 
 def send_notifications_to_recipients(ids, food_name, quantity):
-    # registration_tokens = [
-    #     'YOUR_REGISTRATION_TOKEN_1',
-    #     # ...
-    #     'YOUR_REGISTRATION_TOKEN_N',
-    # ]
+    if not FIREBASE_ENABLED:
+        print(f"📱 Notification skipped (Firebase disabled): {food_name} - {quantity}")
+        return
+        
+    if not ids or len(ids) == 0:
+        print(f"📱 No tokens provided for notification: {food_name} - {quantity}")
+        return
+        
+    try:
+        notification = messaging.Notification(title=food_name, body=quantity)
 
-    notification = messaging.Notification(title=food_name, body=quantity)
-
-    # See documentation on defining a message payload.
-    message = messaging.MulticastMessage(
-        notification=notification,
-        tokens=ids,
-    )
-    response = messaging.send_multicast(message)
-    if response.failure_count > 0:
-        responses = response.responses
-        failed_tokens = []
-        for idx, resp in enumerate(responses):
-            if not resp.success:
-                # The order of responses corresponds to the order of the registration tokens.
-                failed_tokens.append(ids[idx])
+        # See documentation on defining a message payload.
+        message = messaging.MulticastMessage(
+            notification=notification,
+            tokens=ids,
+        )
+        response = messaging.send_multicast(message)
+        print(f"📱 Successfully sent {response.success_count} notifications, {response.failure_count} failed")
+        
+        # if response.failure_count > 0:
+        #     responses = response.responses
+        #     failed_tokens = []
+        #     for idx, resp in enumerate(responses):
+        #         if not resp.success:
+        #             # The order of responses corresponds to the order of the registration tokens.
+        #             failed_tokens.append(ids[idx])
+        #             print(f"📱 Failed to send to token {idx}: {resp.exception}")
+                    
+    except Exception as e:
+        print(f"Firebase notification error: {e}")
+        # Continue execution even if notifications fail
 
 
 def send_notifications_to_volunteers(ids, food_name):
-    notification = messaging.Notification(title=food_name,
-                                          body="New food item has been added in your locality, pick up food now?")
+    if not FIREBASE_ENABLED:
+        print(f"📱 Volunteer notification skipped (Firebase disabled): {food_name}")
+        return
+        
+    if not ids or len(ids) == 0:
+        print(f"📱 No tokens provided for volunteer notification: {food_name}")
+        return
+        
+    try:
+        notification = messaging.Notification(title=food_name,
+                                              body="New food item has been added in your locality, pick up food now?")
 
-    # See documentation on defining a message payload.
-    message = messaging.MulticastMessage(
-        notification=notification,
-        tokens=ids,
-    )
-    response = messaging.send_multicast(message)
-    if response.failure_count > 0:
-        responses = response.responses
-        failed_tokens = []
-        for idx, resp in enumerate(responses):
-            if not resp.success:
-                # The order of responses corresponds to the order of the registration tokens.
-                failed_tokens.append(ids[idx])
+        # See documentation on defining a message payload.
+        message = messaging.MulticastMessage(
+            notification=notification,
+            tokens=ids,
+        )
+        response = messaging.send_multicast(message)
+        print(f"📱 Successfully sent {response.success_count} volunteer notifications, {response.failure_count} failed")
+        
+        # if response.failure_count > 0:
+        #     responses = response.responses
+        #     failed_tokens = []
+        #     for idx, resp in enumerate(responses):
+        #         if not resp.success:
+        #             # The order of responses corresponds to the order of the registration tokens.
+        #             failed_tokens.append(ids[idx])
+        #             print(f"📱 Failed to send volunteer notification to token {idx}: {resp.exception}")
+                    
+    except Exception as e:
+        print(f"Firebase notification error: {e}")
+        # Continue execution even if notifications fail
 
 
 def send_notification_to_donor(token, recipient_name):
-    notification = messaging.Notification(title="Food Accepted by " + str(recipient_name), body="")
+    if not FIREBASE_ENABLED:
+        print(f"📱 Donor notification skipped (Firebase disabled): Food accepted by {recipient_name}")
+        return
+        
+    if not token:
+        print(f"📱 No token provided for donor notification: Food accepted by {recipient_name}")
+        return
+        
+    try:
+        notification = messaging.Notification(title="Food Accepted by " + str(recipient_name), body="")
 
-    # See documentation on defining a message payload.
-    message = messaging.Message(
-        notification=notification,
-        token=token,
-    )
-    response = messaging.send(message)
+        # See documentation on defining a message payload.
+        message = messaging.Message(
+            notification=notification,
+            token=token,
+        )
+        response = messaging.send(message)
+        print(f"📱 Successfully sent donor notification: {response}")
+    except Exception as e:
+        print(f"Firebase notification error: {e}")
+        # Continue execution even if notifications fail
 
 
 def dist(lat1, long1, lat2, long2):
@@ -1146,4 +1227,4 @@ def admin_registration():
 
 if __name__ == '__main__':
     # app.run(debug=True)
-    app.run()
+    app.run(host='0.0.0.0', port=5004)

@@ -96,3 +96,257 @@ Traceback (most recent call last):
   File "/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/venv/lib/python3.9/site-packages/pymongo/helpers.py", line 167, in _check_command_response
     raise OperationFailure(errmsg, code, response, max_wire_version)
 pymongo.errors.OperationFailure: The field 'volunteer_id' must be an accumulator object, full error: {'ok': 0.0, 'errmsg': "The field 'volunteer_id' must be an accumulator object", 'code': 40234, 'codeName': 'Location40234', '$clusterTime': {'clusterTime': Timestamp(1655809268, 8), 'signature': {'hash': b'J\x02\r\xb3\xae\xd4\xcb\xe9\xa5C\xd1\x88\xe5\x0f\xe8\xe6w\x03\xce\xf2', 'keyId': 7051609200723492877}}, 'operationTime': Timestamp(1655809268, 8)}
+Exception on /isUserExists [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 104, in isUserExists
+    donor_record = donor_reg.find_one({'email': input['email']})
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/collection.py", line 1506, in find_one
+    for result in cursor.limit(-1):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1264, in next
+    if len(self.__data) or self._refresh():
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1155, in _refresh
+    self.__session = self.__collection.database.client._ensure_session()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1823, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1766, in __start_session
+    self._topology._check_implicit_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 573, in _check_implicit_session_support
+    self._check_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 589, in _check_session_support
+    self._select_servers_loop(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 259, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 68d072b01716523c2e580b88, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('cluster0ct-shard-00-00.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-01.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-02.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+Exception on /isUserExists [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 104, in isUserExists
+    donor_record = donor_reg.find_one({'email': input['email']})
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/collection.py", line 1506, in find_one
+    for result in cursor.limit(-1):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1264, in next
+    if len(self.__data) or self._refresh():
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1155, in _refresh
+    self.__session = self.__collection.database.client._ensure_session()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1823, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1766, in __start_session
+    self._topology._check_implicit_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 573, in _check_implicit_session_support
+    self._check_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 589, in _check_session_support
+    self._select_servers_loop(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 259, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 68d076f67b08d89f691969e1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('cluster0ct-shard-00-00.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-01.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-02.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+Exception on /isUserExists [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 104, in isUserExists
+    donor_record = donor_reg.find_one({'email': input['email']})
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/collection.py", line 1506, in find_one
+    for result in cursor.limit(-1):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1264, in next
+    if len(self.__data) or self._refresh():
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1155, in _refresh
+    self.__session = self.__collection.database.client._ensure_session()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1823, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1766, in __start_session
+    self._topology._check_implicit_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 573, in _check_implicit_session_support
+    self._check_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 589, in _check_session_support
+    self._select_servers_loop(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 259, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 68d076f67b08d89f691969e1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('cluster0ct-shard-00-00.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-01.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-02.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+Exception on /isUserExists [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 104, in isUserExists
+    donor_record = donor_reg.find_one({'email': input['email']})
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/collection.py", line 1506, in find_one
+    for result in cursor.limit(-1):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1264, in next
+    if len(self.__data) or self._refresh():
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1155, in _refresh
+    self.__session = self.__collection.database.client._ensure_session()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1823, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1766, in __start_session
+    self._topology._check_implicit_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 573, in _check_implicit_session_support
+    self._check_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 589, in _check_session_support
+    self._select_servers_loop(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 259, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 68d076f67b08d89f691969e1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('cluster0ct-shard-00-00.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-01.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-02.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+Exception on /isUserExists [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 104, in isUserExists
+    donor_record = donor_reg.find_one({'email': input['email']})
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/collection.py", line 1506, in find_one
+    for result in cursor.limit(-1):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1264, in next
+    if len(self.__data) or self._refresh():
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1155, in _refresh
+    self.__session = self.__collection.database.client._ensure_session()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1823, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1766, in __start_session
+    self._topology._check_implicit_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 573, in _check_implicit_session_support
+    self._check_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 589, in _check_session_support
+    self._select_servers_loop(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 259, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 68d076f67b08d89f691969e1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('cluster0ct-shard-00-00.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-01.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-02.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+Exception on /isUserExists [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 104, in isUserExists
+    donor_record = donor_reg.find_one({'email': input['email']})
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/collection.py", line 1506, in find_one
+    for result in cursor.limit(-1):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1264, in next
+    if len(self.__data) or self._refresh():
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/cursor.py", line 1155, in _refresh
+    self.__session = self.__collection.database.client._ensure_session()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1823, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/mongo_client.py", line 1766, in __start_session
+    self._topology._check_implicit_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 573, in _check_implicit_session_support
+    self._check_session_support()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 589, in _check_session_support
+    self._select_servers_loop(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/pymongo/topology.py", line 259, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 68d076f67b08d89f691969e1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('cluster0ct-shard-00-00.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-00.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-01.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-01.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0ct-shard-00-02.sjo2d.mongodb.net', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('cluster0ct-shard-00-02.sjo2d.mongodb.net:27017: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1007) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+Exception on /food_donor/add_food [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/firebase_admin/messaging.py", line 483, in send_all
+    batch.execute()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/googleapiclient/http.py", line 1564, in execute
+    _auth.refresh_credentials(creds)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/googleapiclient/_auth.py", line 135, in refresh_credentials
+    return credentials.refresh(request)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/_client.py", line 270, in _token_endpoint_request
+    _handle_error_response(response_data, retryable_error)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/_client.py", line 69, in _handle_error_response
+    raise exceptions.RefreshError(
+google.auth.exceptions.RefreshError: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 323, in add_food
+    send_notifications_to_recipients(tokens, input['food_name'], input['quantity'])
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 948, in send_notifications_to_recipients
+    response = messaging.send_multicast(message)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/firebase_admin/messaging.py", line 230, in send_multicast
+    return _get_messaging_service(app).send_all(messages, dry_run)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/firebase_admin/messaging.py", line 485, in send_all
+    raise self._handle_batch_error(error)
+firebase_admin.exceptions.UnknownError: Unknown error while making a remote service call: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
+Exception on /food_donor/add_food [POST]
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/firebase_admin/messaging.py", line 483, in send_all
+    batch.execute()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/googleapiclient/http.py", line 1564, in execute
+    _auth.refresh_credentials(creds)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/googleapiclient/_auth.py", line 135, in refresh_credentials
+    return credentials.refresh(request)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/_client.py", line 270, in _token_endpoint_request
+    _handle_error_response(response_data, retryable_error)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/google/oauth2/_client.py", line 69, in _handle_error_response
+    raise exceptions.RefreshError(
+google.auth.exceptions.RefreshError: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 329, in add_food
+    send_notifications_to_recipients(tokens, input['food_name'], input['quantity'])
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/app.py", line 954, in send_notifications_to_recipients
+    response = messaging.send_multicast(message)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/firebase_admin/messaging.py", line 230, in send_multicast
+    return _get_messaging_service(app).send_all(messages, dry_run)
+  File "/Users/srikamaltejamp/pycharm_projects/closingtimeapi/.venv/lib/python3.10/site-packages/firebase_admin/messaging.py", line 485, in send_all
+    raise self._handle_batch_error(error)
+firebase_admin.exceptions.UnknownError: Unknown error while making a remote service call: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
