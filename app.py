@@ -204,7 +204,7 @@ def sendPush(title, msg, registration_token, dataObject=None):
 
     # Send a message to the device corresponding to the provided
     # registration token.
-    response = messaging.send_multicast(message)
+    response = messaging.send_each_for_multicast(message)
     # Response is a message ID string.
     # print('Successfully sent message:', response)
 
@@ -985,7 +985,7 @@ def send_notifications_to_recipients(ids, food_name, quantity):
             notification=notification,
             tokens=ids,
         )
-        response = messaging.send_multicast(message)
+        response = messaging.send_each_for_multicast(message)
         print(f"📱 Successfully sent {response.success_count} notifications, {response.failure_count} failed")
         
         # if response.failure_count > 0:
@@ -1020,7 +1020,7 @@ def send_notifications_to_volunteers(ids, food_name):
             notification=notification,
             tokens=ids,
         )
-        response = messaging.send_multicast(message)
+        response = messaging.send_each_for_multicast(message)
         print(f"📱 Successfully sent {response.success_count} volunteer notifications, {response.failure_count} failed")
         
         # if response.failure_count > 0:
