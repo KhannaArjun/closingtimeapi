@@ -93,11 +93,12 @@ client = pymongo.MongoClient(
     CONNECTION_STRING,
     tls=True,
     tlsAllowInvalidCertificates=True,  # Allow invalid certificates
-    serverSelectionTimeoutMS=10000,  # Increased timeout
-    connectTimeoutMS=10000,  # Increased timeout
-    socketTimeoutMS=10000,  # Added socket timeout
+    serverSelectionTimeoutMS=30000,  # 30 second timeout
+    connectTimeoutMS=30000,  # 30 second timeout
+    socketTimeoutMS=30000,  # 30 second socket timeout
     retryWrites=True,
-    retryReads=True
+    retryReads=True,
+    w='majority'
 )
 db = client.get_database(db)
 
