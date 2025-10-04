@@ -1331,6 +1331,112 @@ def send_qr_code_email(business_email, admin_email, business_name, qr_image_data
         # Don't raise exception - continue with business registration even if email fails
 
 
+def send_email_via_brevo_api(to_email, to_name, subject, html_content, sender_name="Closing Time", sender_email="sclosingtime@gmail.com"):
+    """Send email via Brevo REST API"""
+    try:
+        # Get Brevo API key from environment
+        brevo_api_key = os.environ.get('BREVO_API_KEY', 'tNMjSzyDKWR6ELXn')
+        
+        if not brevo_api_key:
+            print(f"❌ Brevo API key not configured")
+            return False
+        
+        # Brevo API endpoint
+        url = "https://api.brevo.com/v3/smtp/email"
+        
+        # Email payload
+        payload = {
+            "sender": {
+                "name": sender_name,
+                "email": sender_email
+            },
+            "to": [
+                {
+                    "email": to_email,
+                    "name": to_name
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_content
+        }
+        
+        headers = {
+            'accept': 'application/json',
+            'api-key': brevo_api_key,
+            'content-type': 'application/json'
+        }
+        
+        print(f"📧 Sending email via Brevo API to {to_email}")
+        
+        # Send request
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        
+        if response.status_code == 201:
+            print(f"✅ Brevo API email sent successfully to {to_email}")
+            return True
+        else:
+            print(f"❌ Brevo API error: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Brevo API Error: {str(e)}")
+        return False
+
+
+def send_qr_code_email_via_brevo_api(business_email, admin_email, business_name, business_id):
+    """Send QR code to business and admin emails via Brevo API"""
+    try:
+        # Get email template
+        email_body = get_donor_registration_email_template(business_name, business_id)
+        
+        # Send to business
+        business_email_sent = send_email_via_brevo_api(
+            to_email=business_email,
+            to_name=business_name,
+            subject=f"QR Code for {business_name} - Closing Time Food Donation",
+            html_content=email_body
+        )
+        
+        if not business_email_sent:
+            print(f"❌ Failed to send QR code to business: {business_name}")
+            return False
+        
+        # Send notification to admin
+        admin_body = f"""
+        <html>
+        <body>
+            <h2>New Business Registration</h2>
+            <p>A new business has been registered for the QR code food donation program:</p>
+            <ul>
+                <li><strong>Business Name:</strong> {business_name}</li>
+                <li><strong>Email:</strong> {business_email}</li>
+                <li><strong>Business ID:</strong> {business_id}</li>
+                <li><strong>Registration Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
+            </ul>
+            <p>QR code has been sent to the business email.</p>
+        </body>
+        </html>
+        """
+        
+        admin_email_sent = send_email_via_brevo_api(
+            to_email=admin_email,
+            to_name="Admin",
+            subject=f"New Business Registered: {business_name}",
+            html_content=admin_body
+        )
+        
+        if not admin_email_sent:
+            print(f"❌ Failed to send admin notification for: {business_name}")
+            # Don't return False here as business email was sent successfully
+        
+        print(f"✅ QR code emails sent successfully for business: {business_name}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error in Brevo API email process: {e}")
+        return False
+
+
 # Admin API's
 @app.route('/login_admin', methods=['POST'])
 def login_admin():
@@ -1517,12 +1623,11 @@ def register_business():
         img_buffer.seek(0)
         qr_image_data = img_buffer.getvalue()
         
-        # Send QR code via email (graceful failure)
-        email_sent = send_qr_code_email(
+        # Send QR code via Brevo API (graceful failure)
+        email_sent = send_qr_code_email_via_brevo_api(
             business_email=input_data['email'],
             admin_email=input_data['admin_email'],
             business_name=input_data['business_name'],
-            qr_image_data=qr_image_data,
             business_id=business_id
         )
         
@@ -1909,6 +2014,84 @@ def test_smtp_configs():
         "results": results,
         "recommendation": "Try the configurations that show 'Connection successful'"
     })
+
+@app.route('/test_brevo_api', methods=['POST'])
+def test_brevo_api():
+    """Test Brevo REST API email sending"""
+    try:
+        input_data = request.get_json()
+        test_email = input_data.get('email', 'sclosingtime@gmail.com')
+        
+        # Get Brevo API key from environment
+        brevo_api_key = os.environ.get('BREVO_API_KEY', 'tNMjSzyDKWR6ELXn')
+        
+        if not brevo_api_key:
+            return flask.jsonify({
+                "success": False,
+                "message": "Brevo API key not configured"
+            }), 500
+        
+        # Brevo API endpoint
+        url = "https://api.brevo.com/v3/smtp/email"
+        
+        # Email payload
+        payload = {
+            "sender": {
+                "name": "Closing Time",
+                "email": "sclosingtime@gmail.com"
+            },
+            "to": [
+                {
+                    "email": test_email,
+                    "name": "Test User"
+                }
+            ],
+            "subject": "Closing Time - Email Test",
+            "htmlContent": """
+            <html>
+            <body>
+                <h2>Email Test Successful!</h2>
+                <p>This is a test email from your Closing Time application using Brevo API.</p>
+                <p>If you received this, your Brevo API configuration is working correctly.</p>
+                <p>Best regards,<br>Closing Time Team</p>
+            </body>
+            </html>
+            """
+        }
+        
+        headers = {
+            'accept': 'application/json',
+            'api-key': brevo_api_key,
+            'content-type': 'application/json'
+        }
+        
+        print(f"📧 Sending test email via Brevo API to {test_email}")
+        
+        # Send request
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        
+        if response.status_code == 201:
+            print(f"✅ Brevo API email sent successfully")
+            return flask.jsonify({
+                "success": True,
+                "message": f"Test email sent successfully to {test_email}",
+                "brevo_response": response.json()
+            })
+        else:
+            print(f"❌ Brevo API error: {response.status_code} - {response.text}")
+            return flask.jsonify({
+                "success": False,
+                "message": f"Brevo API error: {response.status_code}",
+                "error_details": response.text
+            }), 500
+            
+    except Exception as e:
+        error_msg = f"Failed to send email via Brevo API: {str(e)}"
+        print(f"❌ Brevo API Error: {error_msg}")
+        return flask.jsonify({
+            "success": False,
+            "message": error_msg
+        }), 500
 
 @app.route('/send_test_email', methods=['POST'])
 def send_test_email():
