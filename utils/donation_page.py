@@ -3,21 +3,20 @@ def get_donor_registration_email_template(business_name, business_id):
     return f"""
             <html>
             <body>
-                <h2>Welcome to Closing Time Food Donation Platform!</h2>
+                <h2>Welcome to Closing Time!</h2>
                 <p>Dear {business_name},</p>
-                <p>Your business has been successfully registered for our food donation program.</p>
+                <p>Your business has been successfully registered.</p>
                 <p><strong>Business ID:</strong> {business_id}</p>
-                <p>Please find your unique QR code attached to this email. You can print this QR code and display it at your location for customers to scan when they want to donate food.</p>
+                <p>Please find your unique QR code attached. Print it and keep it handy.</p>
                 
                 <h3>How it works:</h3>
                 <ol>
-                    <li>Print and display the QR code at your location</li>
-                    <li>Customers scan the QR code with their phone</li>
-                    <li>They take a photo of the food they want to donate</li>
-                    <li>Food donations are automatically posted to our platform</li>
+                    <li>Staff scans the QR code</li>
+                    <li>Takes a photo of surplus food</li>
+                    <li>Volunteers pick up and deliver to shelters</li>
                 </ol>
                 
-                <p>Thank you for helping reduce food waste in our community!</p>
+                <p>Thank you for helping reduce food waste!</p>
                 <p>Best regards,<br>Closing Time Team</p>
             </body>
             </html>

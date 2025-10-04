@@ -1247,11 +1247,16 @@ def validate_qr_token(token):
 def send_qr_code_email(business_email, admin_email, business_name, qr_image_data, business_id):
     """Send QR code to business and admin emails"""
     try:
-        # Email configuration - you'll need to configure your SMTP settings
-        smtp_username = constants.Utils.smtp_username
-        smtp_password = constants.Utils.smtp_password
-        smtp_server = constants.Utils.smtp_server
-        smtp_port = constants.Utils.smtp_port
+        # Email configuration - use environment variables first, fallback to constants
+        smtp_username = os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
+        smtp_password = os.environ.get('SMTP_PASSWORD', constants.Utils.smtp_password)
+        smtp_server = os.environ.get('SMTP_SERVER', constants.Utils.smtp_server)
+        smtp_port = int(os.environ.get('SMTP_PORT', constants.Utils.smtp_port))
+        
+        # Check if SMTP credentials are available
+        if not smtp_username or not smtp_password:
+            print(f"⚠️  SMTP credentials not configured. Skipping email for {business_name}")
+            return False
         
         # Create message
         msg = MIMEMultipart()
@@ -1270,47 +1275,59 @@ def send_qr_code_email(business_email, admin_email, business_name, qr_image_data
         msg.attach(qr_attachment)
         
         # Send to business
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(smtp_username, smtp_password)
-        server.send_message(msg)
-        server.quit()
+        try:
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            print(f"✅ QR code sent to business: {business_name}")
+        except Exception as email_error:
+            print(f"❌ Failed to send QR code to business: {email_error}")
+            return False
         
         # Send notification to admin
-        admin_msg = MIMEMultipart()
-        admin_msg['From'] = smtp_username
-        admin_msg['To'] = admin_email
-        admin_msg['Subject'] = f"New Business Registered: {business_name}"
+        try:
+            admin_msg = MIMEMultipart()
+            admin_msg['From'] = smtp_username
+            admin_msg['To'] = admin_email
+            admin_msg['Subject'] = f"New Business Registered: {business_name}"
+            
+            admin_body = f"""
+            <html>
+            <body>
+                <h2>New Business Registration</h2>
+                <p>A new business has been registered for the QR code food donation program:</p>
+                <ul>
+                    <li><strong>Business Name:</strong> {business_name}</li>
+                    <li><strong>Email:</strong> {business_email}</li>
+                    <li><strong>Business ID:</strong> {business_id}</li>
+                    <li><strong>Registration Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
+                </ul>
+                <p>QR code has been sent to the business email.</p>
+            </body>
+            </html>
+            """
+            
+            admin_msg.attach(MIMEText(admin_body, 'html'))
+            
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(admin_msg)
+            server.quit()
+            print(f"✅ Admin notification sent for: {business_name}")
+            
+        except Exception as admin_error:
+            print(f"❌ Failed to send admin notification: {admin_error}")
+            # Don't return False here as business email was sent successfully
         
-        admin_body = f"""
-        <html>
-        <body>
-            <h2>New Business Registration</h2>
-            <p>A new business has been registered for the QR code food donation program:</p>
-            <ul>
-                <li><strong>Business Name:</strong> {business_name}</li>
-                <li><strong>Email:</strong> {business_email}</li>
-                <li><strong>Business ID:</strong> {business_id}</li>
-                <li><strong>Registration Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
-            </ul>
-            <p>QR code has been sent to the business email.</p>
-        </body>
-        </html>
-        """
-        
-        admin_msg.attach(MIMEText(admin_body, 'html'))
-        
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(smtp_username, smtp_password)
-        server.send_message(admin_msg)
-        server.quit()
-        
-        print(f"✅ QR code emails sent successfully for business: {business_name}")
+        return True
         
     except Exception as e:
-        print(f"❌ Error sending QR code emails: {e}")
-        print(f"💡 Please configure Gmail App Password in constants.py")
+        print(f"❌ Error in email sending process: {e}")
+        print(f"💡 SMTP credentials may not be configured properly")
+        return False
         # Don't raise exception - continue with business registration even if email fails
 
 
@@ -1500,8 +1517,8 @@ def register_business():
         img_buffer.seek(0)
         qr_image_data = img_buffer.getvalue()
         
-        # Send QR code via email
-        send_qr_code_email(
+        # Send QR code via email (graceful failure)
+        email_sent = send_qr_code_email(
             business_email=input_data['email'],
             admin_email=input_data['admin_email'],
             business_name=input_data['business_name'],
@@ -1509,16 +1526,21 @@ def register_business():
             business_id=business_id
         )
         
+        if email_sent:
+            message = "Business registered successfully and QR code sent to admin email"
+        else:
+            message = "Business registered successfully. QR code generation failed - please check email configuration"
+        
         response_data = {
             'business_id': business_id,
             'business_name': input_data['business_name'],
             'email': input_data['email'],
             'qr_token': qr_token,
             'qr_url': qr_code_data,
-            'message': 'Business registered successfully. QR code sent to email.'
+            'email_sent': email_sent
         }
         
-        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, response_data))
+        return flask.jsonify(api_response.apiResponse(message, True, response_data))
         
     except Exception as e:
         print(f"Error registering business: {e}")
@@ -1689,10 +1711,16 @@ def send_donation_qr_code(business_email, business_name, donation_data, food_nam
         img_buffer.seek(0)
         qr_image_data = img_buffer.getvalue()
         
-        smtp_username = constants.Utils.smtp_username
-        smtp_password = constants.Utils.smtp_password
-        smtp_server = constants.Utils.smtp_server
-        smtp_port = constants.Utils.smtp_port
+        # Email configuration - use environment variables first, fallback to constants
+        smtp_username = os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
+        smtp_password = os.environ.get('SMTP_PASSWORD', constants.Utils.smtp_password)
+        smtp_server = os.environ.get('SMTP_SERVER', constants.Utils.smtp_server)
+        smtp_port = int(os.environ.get('SMTP_PORT', constants.Utils.smtp_port))
+        
+        # Check if SMTP credentials are available
+        if not smtp_username or not smtp_password:
+            print(f"⚠️  SMTP credentials not configured. Skipping donation email for {business_name}")
+            return False
         
         # Create message
         msg = MIMEMultipart()
@@ -1734,17 +1762,105 @@ def send_donation_qr_code(business_email, business_name, donation_data, food_nam
         msg.attach(qr_attachment)
         
         # Send email
+        try:
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            print(f"✅ Donation QR code sent to {business_name}")
+            return True
+        except Exception as email_error:
+            print(f"❌ Failed to send donation QR code: {email_error}")
+            return False
+        
+    except Exception as e:
+        print(f"❌ Error in donation email process: {e}")
+        return False
+
+
+@app.route('/test_email', methods=['GET'])
+def test_email():
+    """Test email configuration"""
+    try:
+        # Get SMTP settings
+        smtp_username = os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
+        smtp_password = os.environ.get('SMTP_PASSWORD', constants.Utils.smtp_password)
+        smtp_server = os.environ.get('SMTP_SERVER', constants.Utils.smtp_server)
+        smtp_port = int(os.environ.get('SMTP_PORT', constants.Utils.smtp_port))
+        
+        # Test connection
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+        server.quit()
+        
+        return flask.jsonify({
+            "success": True,
+            "message": "Email configuration is working!",
+            "smtp_server": smtp_server,
+            "smtp_port": smtp_port,
+            "smtp_username": smtp_username
+        })
+        
+    except Exception as e:
+        return flask.jsonify({
+            "success": False,
+            "message": f"Email configuration failed: {str(e)}",
+            "smtp_server": os.environ.get('SMTP_SERVER', constants.Utils.smtp_server),
+            "smtp_port": os.environ.get('SMTP_PORT', constants.Utils.smtp_port),
+            "smtp_username": os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
+        }), 500
+
+@app.route('/send_test_email', methods=['POST'])
+def send_test_email():
+    """Send a test email"""
+    try:
+        input_data = request.get_json()
+        test_email = input_data.get('email', 'sclosingtime@gmail.com')
+        
+        # Get SMTP settings
+        smtp_username = os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
+        smtp_password = os.environ.get('SMTP_PASSWORD', constants.Utils.smtp_password)
+        smtp_server = os.environ.get('SMTP_SERVER', constants.Utils.smtp_server)
+        smtp_port = int(os.environ.get('SMTP_PORT', constants.Utils.smtp_port))
+        
+        # Create test message
+        msg = MIMEMultipart()
+        msg['From'] = smtp_username
+        msg['To'] = test_email
+        msg['Subject'] = "Closing Time - Email Test"
+        
+        body = """
+        <html>
+        <body>
+            <h2>Email Test Successful!</h2>
+            <p>This is a test email from your Closing Time application.</p>
+            <p>If you received this, your email configuration is working correctly.</p>
+            <p>Best regards,<br>Closing Time Team</p>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        # Send email
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(smtp_username, smtp_password)
         server.send_message(msg)
         server.quit()
         
-        print(f"✅ Donation QR code sent to {business_name}")
+        return flask.jsonify({
+            "success": True,
+            "message": f"Test email sent successfully to {test_email}"
+        })
         
     except Exception as e:
-        print(f"❌ Error sending donation QR code: {e}")
-
+        return flask.jsonify({
+            "success": False,
+            "message": f"Failed to send test email: {str(e)}"
+        }), 500
 
 @app.route('/qr_scan', methods=['GET'])
 def qr_scan_page():

@@ -26,8 +26,8 @@ class Utils:
     smtp_password = "whmsuoiaozvfyaxp"  # Replace with your Gmail App Password
     available = "Available"
     qr_business_collection = "qr_business_registration"
-    # Server URL for QR codes - use your laptop's IP for testing from phone
-    server_url = "http://192.168.0.30:5005"  # Change to your server's public IP/domain in production
+    # Server URL for QR codes - production domain
+    server_url = "https://closingtimeapi.onrender.com"  # Production domain
     # QR token expiration time in hours
     qr_token_expiry_hours = 2
 
