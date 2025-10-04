@@ -1876,6 +1876,8 @@ def test_smtp_configs():
         {"name": "Gmail Port 587", "server": "smtp.gmail.com", "port": 587},
         {"name": "Gmail Port 465", "server": "smtp.gmail.com", "port": 465},
         {"name": "SendGrid", "server": "smtp.sendgrid.net", "port": 587},
+        {"name": "Brevo", "server": "smtp-relay.brevo.com", "port": 587},
+        {"name": "Brevo Alt", "server": "smtp.brevo.com", "port": 587},
         {"name": "Outlook", "server": "smtp-mail.outlook.com", "port": 587},
     ]
     
