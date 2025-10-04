@@ -2156,6 +2156,9 @@ def qr_scan_page():
         # Get Google API key from environment variable
         google_api_key = os.environ.get('GOOGLE_API_KEY', '')
         
+        # Get donor address from business data
+        donor_address = business_data.get('address', '')
+        
         # Return the actual food donation form
         return f"""
 <!DOCTYPE html>
@@ -2319,6 +2322,30 @@ def qr_scan_page():
         gmp-place-autocomplete .input,
         gmp-place-autocomplete .input-container,
         gmp-place-autocomplete .input-container input {{
+            color: black !important;
+        }}
+        
+        /* Force black text on all autocomplete elements */
+        gmp-place-autocomplete input,
+        gmp-place-autocomplete input[type="text"],
+        gmp-place-autocomplete .input,
+        gmp-place-autocomplete .input-container input,
+        gmp-place-autocomplete .pac-container,
+        gmp-place-autocomplete .pac-item,
+        gmp-place-autocomplete .pac-item-query {{
+            color: black !important;
+            background-color: white !important;
+        }}
+        
+        /* Ensure dropdown items are visible */
+        gmp-place-autocomplete .pac-container .pac-item {{
+            color: black !important;
+            background-color: white !important;
+            border-bottom: 1px solid #eee;
+        }}
+        
+        gmp-place-autocomplete .pac-container .pac-item:hover {{
+            background-color: #f5f5f5 !important;
             color: black !important;
         }}
         .form-group textarea {{ 
@@ -2558,12 +2585,38 @@ def qr_scan_page():
                 // Note: componentRestrictions is not available in the new API
                 // You can set restrictions via the API key restrictions in Google Cloud Console
                 
+                // Pre-populate with donor address if available
+                const donorAddress = '{{ donor_address if donor_address else "" }}';
+                if (donorAddress) {{
+                    setTimeout(() => {{
+                        const input = autocompleteElement.querySelector('input');
+                        if (input) {{
+                            input.value = donorAddress;
+                            input.style.color = 'black';
+                            input.style.setProperty('color', 'black', 'important');
+                        }}
+                    }}, 200);
+                }}
+                
                 // Force text color after element loads
                 setTimeout(() => {{
                     const inputs = autocompleteElement.querySelectorAll('input');
                     inputs.forEach(input => {{
                         input.style.color = 'black';
                         input.style.setProperty('color', 'black', 'important');
+                        input.style.backgroundColor = 'white';
+                        input.style.setProperty('background-color', 'white', 'important');
+                        
+                        // Listen for input changes to maintain black text
+                        input.addEventListener('input', () => {{
+                            input.style.color = 'black';
+                            input.style.setProperty('color', 'black', 'important');
+                        }});
+                        
+                        input.addEventListener('focus', () => {{
+                            input.style.color = 'black';
+                            input.style.setProperty('color', 'black', 'important');
+                        }});
                     }});
                 }}, 100);
                 
@@ -2574,6 +2627,15 @@ def qr_scan_page():
                     if (place.location) {{
                         console.log('Coordinates:', place.location.lat, place.location.lng);
                     }}
+                    
+                    // Force black text color after selection
+                    setTimeout(() => {{
+                        const inputs = autocompleteElement.querySelectorAll('input');
+                        inputs.forEach(input => {{
+                            input.style.color = 'black';
+                            input.style.setProperty('color', 'black', 'important');
+                        }});
+                    }}, 100);
                 }});
                 
                 // Listen for any errors
@@ -2640,8 +2702,12 @@ def qr_scan_page():
             }}
             
             const preview = document.getElementById('camera-preview');
-            preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo">';
+            preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="max-width: 100%; height: auto; border-radius: 8px; border: 2px solid #ffb366;">';
+            preview.style.display = 'block';
             document.getElementById('clear-btn').style.display = 'inline-block';
+            
+            // Hide camera container
+            document.getElementById('camera-container').style.display = 'none';
             
             showSuccess('Photo captured successfully!');
         }}
