@@ -1332,54 +1332,47 @@ def send_qr_code_email(business_email, admin_email, business_name, qr_image_data
 
 
 def send_email_via_brevo_api(to_email, to_name, subject, html_content, sender_name="Closing Time", sender_email="sclosingtime@gmail.com"):
-    """Send email via Brevo REST API"""
+    """Send email via Brevo Python SDK"""
     try:
+        from brevo_python import TransactionalEmailsApi, SendSmtpEmail, SendSmtpEmailSender, SendSmtpEmailTo
+        
         # Get Brevo API key from environment
-        brevo_api_key = os.environ.get('BREVO_API_KEY', 'tNMjSzyDKWR6ELXn')
+        brevo_api_key = os.environ.get('BREVO_API_KEY')
+        
+        print(f"🔧 Brevo SDK Configuration:")
+        print(f"   API Key: {'*' * len(brevo_api_key) if brevo_api_key else 'None'}")
+        print(f"   API Key Length: {len(brevo_api_key) if brevo_api_key else 0}")
+        print(f"   Environment Variable Set: {'Yes' if os.environ.get('BREVO_API_KEY') else 'No'}")
         
         if not brevo_api_key:
             print(f"❌ Brevo API key not configured")
             return False
         
-        # Brevo API endpoint
-        url = "https://api.brevo.com/v3/smtp/email"
+        # Initialize the API client
+        api_instance = TransactionalEmailsApi()
+        api_instance.api_client.configuration.api_key['api-key'] = brevo_api_key
         
-        # Email payload
-        payload = {
-            "sender": {
-                "name": sender_name,
-                "email": sender_email
-            },
-            "to": [
-                {
-                    "email": to_email,
-                    "name": to_name
-                }
-            ],
-            "subject": subject,
-            "htmlContent": html_content
-        }
+        # Create email
+        sender = SendSmtpEmailSender(name=sender_name, email=sender_email)
+        to = [SendSmtpEmailTo(email=to_email, name=to_name)]
         
-        headers = {
-            'accept': 'application/json',
-            'api-key': brevo_api_key,
-            'content-type': 'application/json'
-        }
+        email = SendSmtpEmail(
+            sender=sender,
+            to=to,
+            subject=subject,
+            html_content=html_content
+        )
         
-        print(f"📧 Sending email via Brevo API to {to_email}")
+        print(f"📧 Sending email via Brevo SDK to {to_email}")
         
-        # Send request
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        
-        if response.status_code == 201:
-            print(f"✅ Brevo API email sent successfully to {to_email}")
-            return True
-        else:
-            print(f"❌ Brevo API error: {response.status_code} - {response.text}")
-            return False
+        # Send email
+        api_response = api_instance.send_transac_email(email)
+        print(f"✅ Brevo SDK email sent successfully to {to_email}")
+        print(f"   Message ID: {api_response.message_id}")
+        return True
             
     except Exception as e:
-        print(f"❌ Brevo API Error: {str(e)}")
+        print(f"❌ Brevo SDK Error: {str(e)}")
         return False
 
 
@@ -2017,77 +2010,42 @@ def test_smtp_configs():
 
 @app.route('/test_brevo_api', methods=['POST'])
 def test_brevo_api():
-    """Test Brevo REST API email sending"""
+    """Test Brevo Python SDK email sending"""
     try:
         input_data = request.get_json()
         test_email = input_data.get('email', 'sclosingtime@gmail.com')
         
-        # Get Brevo API key from environment
-        brevo_api_key = os.environ.get('BREVO_API_KEY', 'tNMjSzyDKWR6ELXn')
-        
-        if not brevo_api_key:
-            return flask.jsonify({
-                "success": False,
-                "message": "Brevo API key not configured"
-            }), 500
-        
-        # Brevo API endpoint
-        url = "https://api.brevo.com/v3/smtp/email"
-        
-        # Email payload
-        payload = {
-            "sender": {
-                "name": "Closing Time",
-                "email": "sclosingtime@gmail.com"
-            },
-            "to": [
-                {
-                    "email": test_email,
-                    "name": "Test User"
-                }
-            ],
-            "subject": "Closing Time - Email Test",
-            "htmlContent": """
+        # Use the SDK function
+        email_sent = send_email_via_brevo_api(
+            to_email=test_email,
+            to_name="Test User",
+            subject="Closing Time - Email Test",
+            html_content="""
             <html>
             <body>
                 <h2>Email Test Successful!</h2>
-                <p>This is a test email from your Closing Time application using Brevo API.</p>
-                <p>If you received this, your Brevo API configuration is working correctly.</p>
+                <p>This is a test email from your Closing Time application using Brevo Python SDK.</p>
+                <p>If you received this, your Brevo configuration is working correctly.</p>
                 <p>Best regards,<br>Closing Time Team</p>
             </body>
             </html>
             """
-        }
+        )
         
-        headers = {
-            'accept': 'application/json',
-            'api-key': brevo_api_key,
-            'content-type': 'application/json'
-        }
-        
-        print(f"📧 Sending test email via Brevo API to {test_email}")
-        
-        # Send request
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        
-        if response.status_code == 201:
-            print(f"✅ Brevo API email sent successfully")
+        if email_sent:
             return flask.jsonify({
                 "success": True,
-                "message": f"Test email sent successfully to {test_email}",
-                "brevo_response": response.json()
+                "message": f"Test email sent successfully to {test_email}"
             })
         else:
-            print(f"❌ Brevo API error: {response.status_code} - {response.text}")
             return flask.jsonify({
                 "success": False,
-                "message": f"Brevo API error: {response.status_code}",
-                "error_details": response.text
+                "message": "Failed to send test email"
             }), 500
             
     except Exception as e:
-        error_msg = f"Failed to send email via Brevo API: {str(e)}"
-        print(f"❌ Brevo API Error: {error_msg}")
+        error_msg = f"Failed to send email via Brevo SDK: {str(e)}"
+        print(f"❌ Brevo SDK Error: {error_msg}")
         return flask.jsonify({
             "success": False,
             "message": error_msg
