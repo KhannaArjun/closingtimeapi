@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donate Food - Closing Time</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .form-container {
+            padding: 30px 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .camera-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #camera-preview {
+            width: 100%;
+            height: 250px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        #camera-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .location-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .location-info h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .location-info p {
+            color: #424242;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .success.show {
+            display: block;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .business-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .business-info h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .business-info p {
+            color: #856404;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ Donate Food</h1>
+            <p>Help reduce food waste in your community</p>
+        </div>
+
+        <div class="form-container">
+            <div id="error-message" class="error"></div>
+            <div id="success-message" class="success"></div>
+
+            <div id="business-info" class="business-info" style="display: none;">
+                <h3>📍 Donation Location</h3>
+                <p id="business-name"></p>
+                <p id="business-address"></p>
+            </div>
+
+            <form id="donation-form">
+                <div class="form-group">
+                    <label for="food-name">Food Name *</label>
+                    <input type="text" id="food-name" name="food_name" placeholder="e.g., Pizza, Sandwiches, Salad" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="food-desc">Food Description</label>
+                    <textarea id="food-desc" name="food_desc" rows="3" placeholder="Describe the food items, ingredients, or any special notes"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="quantity">Quantity *</label>
+                    <input type="text" id="quantity" name="quantity" placeholder="e.g., 5 boxes, 10 sandwiches, 2 large pizzas" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="allergen">Allergens</label>
+                    <input type="text" id="allergen" name="allergen" placeholder="e.g., Contains nuts, gluten-free, dairy-free">
+                </div>
+
+                <div class="form-group">
+                    <label for="pickup-date">Pickup Date *</label>
+                    <input type="date" id="pickup-date" name="pickup_date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pickup-time">Pickup Time *</label>
+                    <input type="time" id="pickup-time" name="pickup_time" required>
+                </div>
+
+                <div class="location-info">
+                    <h3>📍 Pickup Location</h3>
+                    <p id="location-address">Getting your location...</p>
+                    <p id="location-coords"></p>
+                    <button type="button" class="btn btn-secondary" onclick="getCurrentLocation()" style="margin-top: 10px;">
+                        🔄 Update Location
+                    </button>
+                </div>
+
+                <div class="camera-container">
+                    <label>📷 Food Photo *</label>
+                    <div id="camera-preview">
+                        <div>Click "Take Photo" to capture food image</div>
+                    </div>
+                    <div class="camera-controls">
+                        <button type="button" class="btn btn-primary" onclick="startCamera()">📷 Take Photo</button>
+                        <button type="button" class="btn btn-secondary" onclick="selectFromGallery()">📁 Gallery</button>
+                        <button type="button" class="btn btn-secondary" onclick="clearPhoto()" style="display: none;" id="clear-btn">🗑️ Clear</button>
+                    </div>
+                    <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+                </div>
+
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px;">
+                    🚀 Submit Donation
+                </button>
+            </form>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Submitting your donation...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStream = null;
+        let capturedPhoto = null;
+        let businessData = null;
+        let currentLocation = null;
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default pickup date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('pickup-date').value = today;
+            
+            // Set default pickup time to current time + 1 hour
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            const timeString = now.toTimeString().slice(0, 5);
+            document.getElementById('pickup-time').value = timeString;
+
+            // Get business data from URL parameters or QR code
+            getBusinessData();
+            
+            // Get current location
+            getCurrentLocation();
+        });
+
+        function getBusinessData() {
+            // Try to get business data from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const qrData = urlParams.get('data');
+            
+            if (qrData) {
+                try {
+                    businessData = JSON.parse(decodeURIComponent(qrData));
+                    displayBusinessInfo();
+                } catch (e) {
+                    showError('Invalid QR code data');
+                }
+            } else {
+                // For testing, you can manually set business data here
+                businessData = {
+                    business_id: 'test-business-123',
+                    email: 'test@restaurant.com',
+                    name: 'Test Restaurant',
+                    location: {
+                        address: '123 Main St, City, State',
+                        lat: 40.7128,
+                        lng: -74.0060
+                    }
+                };
+                displayBusinessInfo();
+            }
+        }
+
+        function displayBusinessInfo() {
+            if (businessData) {
+                document.getElementById('business-name').textContent = businessData.name;
+                document.getElementById('business-address').textContent = businessData.location.address;
+                document.getElementById('business-info').style.display = 'block';
+                
+                // Set the pickup location
+                document.getElementById('location-address').textContent = businessData.location.address;
+                document.getElementById('location-coords').textContent = 
+                    `Coordinates: ${businessData.location.lat}, ${businessData.location.lng}`;
+                
+                currentLocation = {
+                    lat: businessData.location.lat,
+                    lng: businessData.location.lng,
+                    address: businessData.location.address
+                };
+            }
+        }
+
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                showError('Geolocation is not supported by this browser');
+                return;
+            }
+
+            document.getElementById('location-address').textContent = 'Getting your location...';
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Use business location if available, otherwise use current location
+                    if (!businessData) {
+                        currentLocation = { lat, lng };
+                        document.getElementById('location-coords').textContent = 
+                            `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                        
+                        // Get address from coordinates (you can implement reverse geocoding here)
+                        getAddressFromCoordinates(lat, lng);
+                    }
+                },
+                function(error) {
+                    console.error('Error getting location:', error);
+                    if (businessData) {
+                        // Use business location as fallback
+                        currentLocation = {
+                            lat: businessData.location.lat,
+                            lng: businessData.location.lng,
+                            address: businessData.location.address
+                        };
+                    } else {
+                        showError('Unable to get your location. Please enable location services.');
+                    }
+                }
+            );
+        }
+
+        function getAddressFromCoordinates(lat, lng) {
+            // Simple reverse geocoding - you can implement a proper service here
+            document.getElementById('location-address').textContent = 
+                `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        }
+
+        function startCamera() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(stream) {
+                        currentStream = stream;
+                        const video = document.createElement('video');
+                        video.srcObject = stream;
+                        video.play();
+                        
+                        const preview = document.getElementById('camera-preview');
+                        preview.innerHTML = '';
+                        preview.appendChild(video);
+                        
+                        // Add capture button
+                        const captureBtn = document.createElement('button');
+                        captureBtn.className = 'btn btn-success';
+                        captureBtn.textContent = '📸 Capture Photo';
+                        captureBtn.style.marginTop = '10px';
+                        captureBtn.onclick = function() {
+                            capturePhoto(video);
+                        };
+                        preview.appendChild(captureBtn);
+                    })
+                    .catch(function(error) {
+                        console.error('Error accessing camera:', error);
+                        showError('Unable to access camera. Please try uploading from gallery.');
+                    });
+            } else {
+                showError('Camera not supported. Please use the gallery option.');
+            }
+        }
+
+        function capturePhoto(video) {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            capturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Stop camera
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            
+            // Display captured photo
+            const preview = document.getElementById('camera-preview');
+            preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo">';
+            document.getElementById('clear-btn').style.display = 'inline-block';
+            
+            showSuccess('Photo captured successfully!');
+        }
+
+        function selectFromGallery() {
+            document.getElementById('file-input').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    capturedPhoto = e.target.result;
+                    const preview = document.getElementById('camera-preview');
+                    preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Selected Photo">';
+                    document.getElementById('clear-btn').style.display = 'inline-block';
+                    showSuccess('Photo selected successfully!');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearPhoto() {
+            capturedPhoto = null;
+            document.getElementById('camera-preview').innerHTML = 
+                '<div>Click "Take Photo" to capture food image</div>';
+            document.getElementById('clear-btn').style.display = 'none';
+            document.getElementById('file-input').value = '';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+            setTimeout(() => {
+                successDiv.classList.remove('show');
+            }, 3000);
+        }
+
+        // Handle form submission
+        document.getElementById('donation-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!capturedPhoto) {
+                showError('Please take or select a photo of the food');
+                return;
+            }
+            
+            if (!currentLocation) {
+                showError('Unable to determine location. Please try again.');
+                return;
+            }
+            
+            if (!businessData) {
+                showError('Business information not found. Please scan the QR code again.');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('donation-form').style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('food_name', document.getElementById('food-name').value);
+                formData.append('food_desc', document.getElementById('food-desc').value);
+                formData.append('quantity', document.getElementById('quantity').value);
+                formData.append('allergen', document.getElementById('allergen').value);
+                formData.append('pickup_date', document.getElementById('pickup-date').value);
+                formData.append('pickup_time', document.getElementById('pickup-time').value);
+                formData.append('pick_up_lat', currentLocation.lat);
+                formData.append('pick_up_lng', currentLocation.lng);
+                formData.append('pick_up_address', currentLocation.address || businessData.location.address);
+                formData.append('business_id', businessData.business_id);
+                formData.append('business_email', businessData.email);
+                formData.append('photo', capturedPhoto);
+
+                const response = await fetch('/qr_donate_food', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('🎉 Food donation submitted successfully! Thank you for helping reduce food waste.');
+                    // Clear form
+                    document.getElementById('donation-form').reset();
+                    clearPhoto();
+                    setTimeout(() => {
+                        window.close();
+                    }, 3000);
+                } else {
+                    showError('Error submitting donation: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error. Please check your connection and try again.');
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('donation-form').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

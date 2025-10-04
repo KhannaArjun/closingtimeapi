@@ -1,5 +1,10 @@
 import base64
+import os
 from logging import FileHandler, WARNING
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from bson import ObjectId
 from flask import Flask, request
 # from flask_mongoengine import MongoEngine  # Not currently used
@@ -16,9 +21,26 @@ from oauth2client.service_account import ServiceAccountCredentials
 import firebase_admin
 from firebase_admin import credentials, messaging
 from math import radians, cos, sin, asin, sqrt
-from datetime import datetime
+from datetime import datetime, timedelta
 from cfg.cfg import get_prod_db, get_dev_db
 import pytz
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+import atexit
+import qrcode
+import io
+import base64
+import uuid
+import json
+import smtplib
+import hashlib
+import secrets
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from firebase_admin import storage
+import requests
+from utils.donation_page import get_donor_registration_email_template
 
 file_handler = FileHandler('error_logs.txt')
 file_handler.setLevel(WARNING)
@@ -79,6 +101,33 @@ client = pymongo.MongoClient(
 )
 db = client.get_database(db)
 
+# Health check function for MongoDB
+def mongodb_health_check():
+    """Perform MongoDB health check by pinging the database"""
+    try:
+        # Ping the database to check connection
+        client.admin.command('ping')
+        print(f"✅ MongoDB Health Check - {datetime.now()}: Connection successful")
+        return True
+    except Exception as e:
+        print(f"❌ MongoDB Health Check - {datetime.now()}: Connection failed - {e}")
+        return False
+
+# Initialize scheduler for health checks
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=mongodb_health_check,
+    trigger=IntervalTrigger(hours=3),
+    id='mongodb_health_check',
+    name='MongoDB Health Check every 3 hours',
+    replace_existing=True
+)
+
+# Start the scheduler
+scheduler.start()
+
+# Shutdown scheduler when app exits
+atexit.register(lambda: scheduler.shutdown())
 
 # user_collection = pymongo.collection.Collection(db, 'user_collection')
 #
@@ -108,6 +157,63 @@ def getCollectionName(col_name):
 @app.route('/', methods=['GET'])
 def index():
     return "Closing Time!"
+
+
+@app.route('/assets/<filename>')
+def serve_assets(filename):
+    """Serve static files from the assets directory"""
+    return flask.send_from_directory('assets', filename)
+
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint that returns MongoDB connection status"""
+    try:
+        # Perform MongoDB health check
+        client.admin.command('ping')
+        
+        # Get additional MongoDB stats
+        server_info = client.server_info()
+        db_stats = db.command("dbStats")
+        
+        health_data = {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "mongodb": {
+                "connected": True,
+                "server_version": server_info.get('version', 'unknown'),
+                "database_name": db.name,
+                "collections": db_stats.get('collections', 0),
+                "data_size": db_stats.get('dataSize', 0)
+            },
+            "firebase": {
+                "enabled": FIREBASE_ENABLED
+            },
+            "scheduler": {
+                "running": scheduler.running,
+                "jobs_count": len(scheduler.get_jobs())
+            }
+        }
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, health_data))
+        
+    except Exception as e:
+        error_data = {
+            "status": "unhealthy",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e),
+            "mongodb": {
+                "connected": False
+            },
+            "firebase": {
+                "enabled": FIREBASE_ENABLED
+            },
+            "scheduler": {
+                "running": scheduler.running if 'scheduler' in locals() else False
+            }
+        }
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.failed, False, error_data)), 503
 
 
 @app.route('/login', methods=['POST'])
@@ -1090,6 +1196,124 @@ def _get_access_token():
     return access_token_info.access_token
 
 
+def generate_qr_token(business_id, token_type="donation"):
+    """Generate a permanent business identifier token for QR codes"""
+    # Create a random token
+    token = secrets.token_urlsafe(32)
+    
+    # Store token in database (permanent business identifier - no expiry)
+    qr_tokens_collection = getCollectionName('qr_tokens')
+    token_data = {
+        'token': token,
+        'business_id': business_id,
+        'token_type': token_type,  # 'donation' or 'collection'
+        'created_at': datetime.now().isoformat(),
+        'permanent': True,  # Mark as permanent business identifier
+        'used_at': None
+    }
+    
+    qr_tokens_collection.insert_one(token_data)
+    return token
+
+
+def validate_qr_token(token):
+    """Validate and get data for a QR token (permanent business identifier)"""
+    qr_tokens_collection = getCollectionName('qr_tokens')
+    
+    # Find the token (permanent business identifier - no expiry check)
+    token_data = qr_tokens_collection.find_one({
+        'token': token
+    })
+    
+    if not token_data:
+        return None
+    
+    # Update last used time for analytics
+    qr_tokens_collection.update_one(
+        {'token': token},
+        {'$set': {'last_used_at': datetime.now().isoformat()}}
+    )
+    
+    # Get business data
+    business_collection = getCollectionName(constants.Utils.qr_business_collection)
+    business_data = business_collection.find_one({'business_id': token_data['business_id']})
+    
+    return {
+        'token_data': token_data,
+        'business_data': business_data
+    }
+
+
+def send_qr_code_email(business_email, admin_email, business_name, qr_image_data, business_id):
+    """Send QR code to business and admin emails"""
+    try:
+        # Email configuration - you'll need to configure your SMTP settings
+        smtp_username = constants.Utils.smtp_username
+        smtp_password = constants.Utils.smtp_password
+        smtp_server = constants.Utils.smtp_server
+        smtp_port = constants.Utils.smtp_port
+        
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = smtp_username
+        msg['To'] = business_email
+        msg['Subject'] = f"QR Code for {business_name} - Closing Time Food Donation"
+        
+        # Email body
+        body = get_donor_registration_email_template(business_name, business_id)
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        # Attach QR code image
+        qr_attachment = MIMEImage(qr_image_data)
+        qr_attachment.add_header('Content-Disposition', 'attachment', filename=f'qr_code_{business_name}.png')
+        msg.attach(qr_attachment)
+        
+        # Send to business
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        
+        # Send notification to admin
+        admin_msg = MIMEMultipart()
+        admin_msg['From'] = smtp_username
+        admin_msg['To'] = admin_email
+        admin_msg['Subject'] = f"New Business Registered: {business_name}"
+        
+        admin_body = f"""
+        <html>
+        <body>
+            <h2>New Business Registration</h2>
+            <p>A new business has been registered for the QR code food donation program:</p>
+            <ul>
+                <li><strong>Business Name:</strong> {business_name}</li>
+                <li><strong>Email:</strong> {business_email}</li>
+                <li><strong>Business ID:</strong> {business_id}</li>
+                <li><strong>Registration Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
+            </ul>
+            <p>QR code has been sent to the business email.</p>
+        </body>
+        </html>
+        """
+        
+        admin_msg.attach(MIMEText(admin_body, 'html'))
+        
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+        server.send_message(admin_msg)
+        server.quit()
+        
+        print(f"✅ QR code emails sent successfully for business: {business_name}")
+        
+    except Exception as e:
+        print(f"❌ Error sending QR code emails: {e}")
+        print(f"💡 Please configure Gmail App Password in constants.py")
+        # Don't raise exception - continue with business registration even if email fails
+
+
 # Admin API's
 @app.route('/login_admin', methods=['POST'])
 def login_admin():
@@ -1225,6 +1449,1032 @@ def admin_registration():
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
 
+@app.route('/admin/register_business', methods=['POST'])
+def register_business():
+    """Register a business and generate QR code for food donation"""
+    input_data = request.get_json()
+    
+    try:
+        # Validate required fields
+        required_fields = ['business_name', 'email', 'contact_number', 'address', 'lat', 'lng', 'admin_email']
+        for field in required_fields:
+            if field not in input_data:
+                return flask.jsonify(api_response.apiResponse(f"Missing required field: {field}", False, {})), 400
+        
+        # Generate unique business ID
+        business_id = str(uuid.uuid4())
+        
+        # Create business data
+        business_data = {
+            'business_id': business_id,
+            'business_name': input_data['business_name'],
+            'email': input_data['email'],
+            'contact_number': input_data['contact_number'],
+            'address': input_data['address'],
+            'lat': input_data['lat'],
+            'lng': input_data['lng'],
+            'place_id': input_data.get('place_id', ''),
+            'created_at': datetime.now().isoformat(),
+            'status': 'active'
+        }
+        
+        # Save to database
+        business_collection = getCollectionName(constants.Utils.qr_business_collection)
+        result = business_collection.insert_one(business_data)
+        
+        # Generate secure QR token
+        qr_token = generate_qr_token(business_id, "donation")
+        
+        # Create clean URL with secure token
+        qr_code_data = f"{constants.Utils.server_url}/qr_scan?token={qr_token}"
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(qr_code_data)
+        qr.make(fit=True)
+        
+        # Create QR code image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convert to base64 for email attachment
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format='PNG')
+        img_buffer.seek(0)
+        qr_image_data = img_buffer.getvalue()
+        
+        # Send QR code via email
+        send_qr_code_email(
+            business_email=input_data['email'],
+            admin_email=input_data['admin_email'],
+            business_name=input_data['business_name'],
+            qr_image_data=qr_image_data,
+            business_id=business_id
+        )
+        
+        response_data = {
+            'business_id': business_id,
+            'business_name': input_data['business_name'],
+            'email': input_data['email'],
+            'qr_token': qr_token,
+            'qr_url': qr_code_data,
+            'message': 'Business registered successfully. QR code sent to email.'
+        }
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, response_data))
+        
+    except Exception as e:
+        print(f"Error registering business: {e}")
+        return flask.jsonify(api_response.apiResponse(f"Error registering business: {str(e)}", False, {})), 500
+
+
+@app.route('/qr_donate_food', methods=['POST'])
+def qr_donate_food():
+    """Handle food donation from QR code scan"""
+    try:
+        # Get form data
+        food_name = request.form.get('food_name')
+        food_desc = request.form.get('food_desc', '')
+        pickup_date = request.form.get('pickup_date')
+        pickup_time = request.form.get('pickup_time')
+        pick_up_lat = request.form.get('pick_up_lat')
+        pick_up_lng = request.form.get('pick_up_lng')
+        pick_up_address = request.form.get('pick_up_address')
+        business_id = request.form.get('business_id')
+        business_email = request.form.get('business_email')
+        photo_data = request.form.get('photo')
+        token = request.form.get('token')
+        
+        # Validate required fields
+        required_fields = ['food_name', 'pickup_date', 'pickup_time', 'pick_up_lat', 'pick_up_lng', 'pick_up_address', 'business_id', 'business_email', 'photo', 'token']
+        for field in required_fields:
+            if not request.form.get(field):
+                return flask.jsonify(api_response.apiResponse(f"Missing required field: {field}", False, {})), 400
+        
+        # Upload photo to Firebase Storage
+        photo_url = upload_photo_to_firebase(photo_data, business_id, food_name)
+        
+        if not photo_url:
+            return flask.jsonify(api_response.apiResponse("Failed to upload photo", False, {})), 500
+        
+        # Get business info
+        business_collection = getCollectionName(constants.Utils.qr_business_collection)
+        business_info = business_collection.find_one({'business_id': business_id})
+        
+        if not business_info:
+            return flask.jsonify(api_response.apiResponse("Business not found", False, {})), 404
+        
+        # Create food donation data
+        food_donation = {
+            'food_name': food_name,
+            'food_desc': food_desc,
+            'quantity': '1 serving',  # Default quantity
+            'food_ingredients': '',  # No allergen field
+            'allergen': '',  # No allergen field
+            'pick_up_date': pickup_date,
+            'pick_up_time': pickup_time,
+            'pick_up_lat': float(pick_up_lat),
+            'pick_up_lng': float(pick_up_lng),
+            'pick_up_address': pick_up_address,
+            'address': pick_up_address,
+            'image': photo_url,
+            'user_id': business_id,  # Use business_id as user_id
+            'business_name': business_info['business_name'],
+            'business_email': business_email,
+            'isFoodAccepted': False,
+            'status': constants.Utils.available,
+            'created_at': datetime.now().isoformat(),
+            'donation_type': 'qr_scan',
+            'token': token
+        }
+        
+        # Save to database
+        add_food_col = getCollectionName('add_food')
+        food_id = add_food_col.insert_one(food_donation).inserted_id
+        
+        # Find nearby recipients and send notifications
+        recipient_registration_col = getCollectionName('recipient_registration')
+        recipients_obj = recipient_registration_col.find({})
+        recipients_obj_list = list(recipients_obj)
+        
+        nearby_recipient_ids = []
+        for item in recipients_obj_list:
+            miles = dist(float(pick_up_lat), float(pick_up_lng), float(item['lat']), float(item['lng']))
+            if miles < constants.Utils.miles:
+                nearby_recipient_ids.append(str(ObjectId(item['_id'])))
+        
+        # Get recipient tokens and send notifications
+        if nearby_recipient_ids:
+            user_firebase_token_col = getCollectionName("user_firebase_token")
+            recipients_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": nearby_recipient_ids}})
+            
+            tokens = [item['firebase_token'] for item in recipients_firebase_tokens]
+            send_notifications_to_recipients(tokens, food_name, f"New food donation available")
+        
+        # Generate QR code for this specific donation
+        donation_qr_data = {
+            'food_id': str(food_id),
+            'food_name': food_name,
+            'business_name': business_info['business_name'],
+            'pickup_location': pick_up_address,
+            'pickup_date': pickup_date,
+            'pickup_time': pickup_time
+        }
+        
+        # Create and send donation QR code
+        send_donation_qr_code(business_email, business_info['business_name'], donation_qr_data, food_name)
+        
+        response_data = {
+            'food_id': str(food_id),
+            'food_name': food_name,
+            'business_name': business_info['business_name'],
+            'pickup_location': pick_up_address,
+            'pickup_date': pickup_date,
+            'pickup_time': pickup_time,
+            'photo_url': photo_url,
+            'nearby_recipients': len(nearby_recipient_ids),
+            'message': 'Food donation posted successfully! QR code sent to business email.'
+        }
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, response_data))
+        
+    except Exception as e:
+        print(f"Error in QR food donation: {e}")
+        return flask.jsonify(api_response.apiResponse(f"Error posting donation: {str(e)}", False, {})), 500
+
+
+def upload_photo_to_firebase(photo_data, business_id, food_name):
+    """Upload photo to Firebase Storage"""
+    try:
+        # Initialize Firebase Storage bucket
+        bucket = storage.bucket()
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"food_donations/{business_id}/{food_name}_{timestamp}.jpg"
+        
+        # Remove data URL prefix if present
+        if photo_data.startswith('data:image'):
+            photo_data = photo_data.split(',')[1]
+        
+        # Decode base64 data
+        photo_bytes = base64.b64decode(photo_data)
+        
+        # Create blob and upload
+        blob = bucket.blob(filename)
+        blob.upload_from_string(photo_bytes, content_type='image/jpeg')
+        
+        # Make blob publicly accessible
+        blob.make_public()
+        
+        return blob.public_url
+        
+    except Exception as e:
+        print(f"Error uploading photo to Firebase: {e}")
+        return None
+
+
+def send_donation_qr_code(business_email, business_name, donation_data, food_name):
+    """Send QR code for specific food donation to business"""
+    try:
+        # Generate QR code for this donation with URL
+        qr_code_data = f"{constants.Utils.server_url}/volunteer/collect_food_qr?data={json.dumps(donation_data).replace(' ', '%20')}"
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(qr_code_data)
+        qr.make(fit=True)
+        
+        # Create QR code image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convert to bytes
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format='PNG')
+        img_buffer.seek(0)
+        qr_image_data = img_buffer.getvalue()
+        
+        smtp_username = constants.Utils.smtp_username
+        smtp_password = constants.Utils.smtp_password
+        smtp_server = constants.Utils.smtp_server
+        smtp_port = constants.Utils.smtp_port
+        
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = smtp_username
+        msg['To'] = business_email
+        msg['Subject'] = f"New Food Donation QR Code - {food_name}"
+        
+        # Email body
+        body = f"""
+        <html>
+        <body>
+            <h2>New Food Donation Posted!</h2>
+            <p>Dear {business_name},</p>
+            <p>A new food donation has been posted from your location:</p>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h3>Donation Details:</h3>
+                <ul>
+                    <li><strong>Food:</strong> {food_name}</li>
+                    <li><strong>Pickup Date:</strong> {donation_data['pickup_date']}</li>
+                    <li><strong>Pickup Time:</strong> {donation_data['pickup_time']}</li>
+                    <li><strong>Location:</strong> {donation_data['pickup_location']}</li>
+                </ul>
+            </div>
+            
+            <p>Please find the QR code attached. You can print this and display it for volunteers to scan when they come to collect the food.</p>
+            
+            <p>Thank you for helping reduce food waste!</p>
+            <p>Best regards,<br>Closing Time Team</p>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        # Attach QR code
+        qr_attachment = MIMEImage(qr_image_data)
+        qr_attachment.add_header('Content-Disposition', 'attachment', filename=f'donation_qr_{food_name}.png')
+        msg.attach(qr_attachment)
+        
+        # Send email
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        
+        print(f"✅ Donation QR code sent to {business_name}")
+        
+    except Exception as e:
+        print(f"❌ Error sending donation QR code: {e}")
+
+
+@app.route('/qr_scan', methods=['GET'])
+def qr_scan_page():
+    """Serve the QR scanning web page with token validation"""
+    token = request.args.get('token')
+    
+    if not token:
+        return """
+        <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; margin: 0 auto;">
+                <h1 style="color: #ff6b6b;">❌ Invalid QR Code</h1>
+                <p>This QR code is missing required information.</p>
+                <p>Please scan a valid QR code from a registered business.</p>
+            </div>
+        </body>
+        </html>
+        """, 400
+    
+    # Validate token and get business data
+    try:
+        validation_result = validate_qr_token(token)
+        
+        if not validation_result or not validation_result.get('business_data'):
+            return """
+            <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; margin: 0 auto;">
+                    <h1 style="color: #ff6b6b;">❌ Invalid QR Code</h1>
+                    <p>This QR code is not recognized or the business is not registered.</p>
+                    <p>Please scan a valid QR code from a registered business.</p>
+                </div>
+            </body>
+            </html>
+            """, 400
+        
+        business_data = validation_result['business_data']
+        
+        # Get Google API key from environment variable
+        google_api_key = os.environ.get('GOOGLE_API_KEY', '')
+        
+        # Return the actual food donation form
+        return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donate Food - {business_data['business_name']}</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key={google_api_key}&libraries=places"></script>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: #000000; 
+            min-height: 100vh; 
+            padding: 20px; 
+        }}
+        .container {{ 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }}
+        .logo-container {{ 
+            background: #ffb366; 
+            padding: 5px; 
+            text-align: center; 
+            border-bottom: 3px solid #ff9500; 
+            height: 100px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }}
+        .logo {{ 
+            font-size: 32px; 
+            font-weight: 700; 
+            color: white; 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+        }}
+        .header {{ 
+            background: #ffb366; 
+            color: black; 
+            padding: 25px 20px; 
+            text-align: center; 
+        }}
+        .header h1 {{ 
+            font-size: 24px; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: black; 
+        }}
+        .header p {{ 
+            opacity: 0.8; 
+            font-size: 14px; 
+            font-weight: 400; 
+            color: black; 
+        }}
+        .form-container {{ 
+            padding: 30px 20px; 
+        }}
+        .business-info {{ 
+            background: #fff4e6; 
+            border: 2px solid #ffb366; 
+            border-radius: 12px; 
+            padding: 18px; 
+            margin-bottom: 25px; 
+        }}
+        .business-info h3 {{ 
+            color: #cc6600; 
+            margin-bottom: 12px; 
+            font-size: 16px; 
+            font-weight: 600; 
+        }}
+        .business-info p {{ 
+            color: #cc6600; 
+            font-size: 14px; 
+            margin-bottom: 6px; 
+            font-weight: 500; 
+        }}
+        .form-group {{ 
+            margin-bottom: 22px; 
+        }}
+        .form-group label {{ 
+            display: block; 
+            margin-bottom: 10px; 
+            font-weight: 600; 
+            color: #333; 
+            font-size: 15px; 
+        }}
+        .form-group input, .form-group textarea {{ 
+            width: 100%; 
+            padding: 14px 16px; 
+            border: 2px solid #e1e8ed; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            font-family: inherit; 
+            font-weight: 400; 
+            transition: all 0.3s ease; 
+            background: #fafafa; 
+            display: block; 
+        }}
+        .form-group input:focus, .form-group textarea:focus {{ 
+            outline: none; 
+            border-color: #ffb366; 
+            background: white; 
+            box-shadow: 0 0 0 3px rgba(255, 179, 102, 0.1); 
+        }}
+        gmp-place-autocomplete {{ 
+            width: 100%; 
+            border: 2px solid #e1e8ed; 
+            border-radius: 12px; 
+            background: #fafafa; 
+            display: block; 
+            transition: all 0.3s ease; 
+        }}
+        gmp-place-autocomplete:focus-within {{ 
+            outline: none; 
+            border-color: #ffb366; 
+            background: white; 
+            box-shadow: 0 0 0 3px rgba(255, 179, 102, 0.1); 
+        }}
+        gmp-place-autocomplete input, 
+        gmp-place-autocomplete input[type="text"],
+        gmp-place-autocomplete .input,
+        gmp-place-autocomplete * {{ 
+            border: none !important; 
+            outline: none !important; 
+            background: transparent !important; 
+            width: 100% !important; 
+            padding: 14px 16px !important; 
+            margin: 0 !important; 
+            font-size: 16px !important; 
+            font-family: inherit !important; 
+            color: black !important; 
+        }}
+        gmp-place-autocomplete input::placeholder,
+        gmp-place-autocomplete input[type="text"]::placeholder,
+        gmp-place-autocomplete .input::placeholder {{ 
+            color: #999 !important; 
+        }}
+        gmp-place-autocomplete input::-webkit-input-placeholder,
+        gmp-place-autocomplete input[type="text"]::-webkit-input-placeholder {{ 
+            color: #999 !important; 
+        }}
+        gmp-place-autocomplete input::-moz-placeholder,
+        gmp-place-autocomplete input[type="text"]::-moz-placeholder {{ 
+            color: #999 !important; 
+        }}
+        gmp-place-autocomplete input:-ms-input-placeholder,
+        gmp-place-autocomplete input[type="text"]:-ms-input-placeholder {{ 
+            color: #999 !important; 
+        }}
+        
+        /* More aggressive targeting */
+        gmp-place-autocomplete,
+        gmp-place-autocomplete *,
+        gmp-place-autocomplete input,
+        gmp-place-autocomplete input[type="text"],
+        gmp-place-autocomplete .input,
+        gmp-place-autocomplete .input-container,
+        gmp-place-autocomplete .input-container input {{
+            color: black !important;
+        }}
+        .form-group textarea {{ 
+            resize: vertical; 
+            min-height: 90px; 
+        }}
+        .camera-container {{ 
+            margin-bottom: 25px; 
+        }}
+        #camera-preview {{ 
+            width: 100%; 
+            height: 250px; 
+            background: #f8f9fa; 
+            border: 2px dashed #dee2e6; 
+            border-radius: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #6c757d; 
+            font-size: 14px; 
+            font-weight: 500; 
+            overflow: hidden; 
+        }}
+        #camera-preview img {{ 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+        }}
+        .camera-controls {{ 
+            display: flex; 
+            gap: 12px; 
+            margin-top: 12px; 
+        }}
+        .btn {{ 
+            flex: 1; 
+            padding: 14px 20px; 
+            border: none; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            font-family: inherit; 
+        }}
+        .btn-primary {{ 
+            background: #ffb366; 
+            color: white; 
+        }}
+        .btn-primary:hover {{ 
+            background: #ff9500; 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 20px rgba(255, 149, 0, 0.3); 
+        }}
+        .btn-secondary {{ 
+            background: #6c757d; 
+            color: white; 
+        }}
+        .btn-secondary:hover {{ 
+            background: #5a6268; 
+            transform: translateY(-1px); 
+        }}
+        .btn-success {{ 
+            background: #ffb366; 
+            color: white; 
+            width: 100%; 
+            margin-top: 25px; 
+            padding: 16px 24px; 
+            font-size: 17px; 
+        }}
+        .btn-success:hover {{ 
+            background: #ff9500; 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 20px rgba(255, 149, 0, 0.3); 
+        }}
+        .btn-success:disabled {{ 
+            background: #ccc; 
+            cursor: not-allowed; 
+            transform: none; 
+            box-shadow: none; 
+        }}
+        #file-input {{ 
+            display: none; 
+        }}
+        .error {{ 
+            background: #f8d7da; 
+            color: #721c24; 
+            padding: 12px 16px; 
+            border-radius: 10px; 
+            margin-bottom: 18px; 
+            display: none; 
+            font-weight: 500; 
+        }}
+        .error.show {{ 
+            display: block; 
+        }}
+        .success {{ 
+            background: #d4edda; 
+            color: #155724; 
+            padding: 12px 16px; 
+            border-radius: 10px; 
+            margin-bottom: 18px; 
+            display: none; 
+            font-weight: 500; 
+        }}
+        .success.show {{ 
+            display: block; 
+        }}
+        .loading {{ 
+            display: none; 
+            text-align: center; 
+            padding: 25px; 
+        }}
+        .loading.show {{ 
+            display: block; 
+        }}
+        .spinner {{ 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #ffb366; 
+            border-radius: 50%; 
+            width: 45px; 
+            height: 45px; 
+            animation: spin 1s linear infinite; 
+            margin: 0 auto 18px; 
+        }}
+        @keyframes spin {{ 
+            0% {{ transform: rotate(0deg); }} 
+            100% {{ transform: rotate(360deg); }} 
+        }}
+        .required {{ 
+            color: #dc3545; 
+            font-weight: 700; 
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <img src="/assets/logo_white.png" alt="Closing Time Logo" style="height: 220px; width: auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+            <div class="logo" style="display: none;">Closing Time</div>
+        </div>
+        
+        <div class="header">
+            <h1>Food Donation</h1>
+            <p>from</p>
+            <div class="business-info" style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                <h3 style="margin: 0 0 8px 0; color: black; font-size: 18px;">{business_data['business_name']}</h3>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <div id="error-message" class="error"></div>
+            <div id="success-message" class="success"></div>
+
+
+            <form id="donation-form">
+                <div class="camera-container">
+                    <label>📷 Food Photo <span class="required">*</span></label>
+                    <div id="camera-preview">
+                        <div>Click "Take Photo" to add photo</div>
+                    </div>
+                    <div class="camera-controls">
+                        <button type="button" class="btn btn-primary" onclick="startCamera()">📷 Take Photo</button>
+                        <button type="button" class="btn btn-secondary" onclick="clearPhoto()" style="display: none;" id="clear-btn">🗑️ Clear</button>
+                    </div>
+                    <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+                </div>
+
+                <div class="form-group">
+                    <label for="food-name">Food Name <span class="required">*</span></label>
+                    <input type="text" id="food-name" name="food_name" placeholder="e.g., Pizza, Sandwiches, Salad" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pickup-date">Pickup Date <span class="required">*</span></label>
+                    <input type="date" id="pickup-date" name="pickup_date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pickup-time">Pickup Time <span class="required">*</span></label>
+                    <input type="time" id="pickup-time" name="pickup_time" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pickup-address">Pickup Address <span class="required">*</span></label>
+                    <gmp-place-autocomplete id="pickup-address" placeholder="Start typing your address..." required></gmp-place-autocomplete>
+                    <small style="color: #cc6600; font-size: 13px; margin-top: 5px; display: block;">Start typing to see address suggestions</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="food-notes">Additional Notes (Optional)</label>
+                    <textarea id="food-notes" name="food_notes" placeholder="Any special notes, ingredients, or instructions..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-success" id="submit-btn">
+                    Submit Donation
+                </button>
+            </form>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Submitting your donation...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStream = null;
+        let capturedPhoto = null;
+        const businessData = {{
+            business_id: '{business_data['business_id']}',
+            email: '{business_data['email']}',
+            name: '{business_data['business_name']}',
+            lat: {business_data['lat']},
+            lng: {business_data['lng']},
+            address: '{business_data['address']}'
+        }};
+
+        // Initialize form
+        document.addEventListener('DOMContentLoaded', function() {{
+            // Set pickup date to current date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('pickup-date').value = today;
+            
+            // Set pickup time to current time
+            const now = new Date();
+            const timeString = now.toTimeString().slice(0, 5);
+            document.getElementById('pickup-time').value = timeString;
+            
+            // Initialize Google Places Autocomplete
+            initializePlacesAutocomplete();
+        }});
+        
+        function initializePlacesAutocomplete() {{
+            const autocompleteElement = document.getElementById('pickup-address');
+            if (autocompleteElement && window.google && window.google.maps) {{
+                // Configure the new PlaceAutocompleteElement
+                // Note: componentRestrictions is not available in the new API
+                // You can set restrictions via the API key restrictions in Google Cloud Console
+                
+                // Force text color after element loads
+                setTimeout(() => {{
+                    const inputs = autocompleteElement.querySelectorAll('input');
+                    inputs.forEach(input => {{
+                        input.style.color = 'black';
+                        input.style.setProperty('color', 'black', 'important');
+                    }});
+                }}, 100);
+                
+                // Listen for place selection
+                autocompleteElement.addEventListener('gmp-placeselect', (event) => {{
+                    const place = event.place;
+                    console.log('Address selected:', place.formattedAddress);
+                    if (place.location) {{
+                        console.log('Coordinates:', place.location.lat, place.location.lng);
+                    }}
+                }});
+                
+                // Listen for any errors
+                autocompleteElement.addEventListener('gmp-error', (event) => {{
+                    console.error('Places API error:', event.error);
+                }});
+                
+                // Continuously force text color
+                setInterval(() => {{
+                    const inputs = autocompleteElement.querySelectorAll('input');
+                    inputs.forEach(input => {{
+                        input.style.color = 'black';
+                        input.style.setProperty('color', 'black', 'important');
+                    }});
+                }}, 500);
+            }} else {{
+                console.log('Google Maps API not loaded or PlaceAutocompleteElement unavailable');
+            }}
+        }}
+
+        function startCamera() {{
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
+                navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }})
+                    .then(function(stream) {{
+                        currentStream = stream;
+                        const video = document.createElement('video');
+                        video.srcObject = stream;
+                        video.autoplay = true;
+                        video.playsInline = true;
+                        
+                        const preview = document.getElementById('camera-preview');
+                        preview.innerHTML = '';
+                        preview.appendChild(video);
+                        
+                        const captureBtn = document.createElement('button');
+                        captureBtn.className = 'btn btn-success';
+                        captureBtn.textContent = '📸 Capture';
+                        captureBtn.style.marginTop = '10px';
+                        captureBtn.style.width = '100%';
+                        captureBtn.onclick = function() {{ capturePhoto(video); }};
+                        preview.appendChild(captureBtn);
+                    }})
+                    .catch(function(error) {{
+                        console.error('Error accessing camera:', error);
+                        showError('Unable to access camera. Please try again.');
+                    }});
+            }} else {{
+                showError('Camera not supported on this device.');
+            }}
+        }}
+
+        function capturePhoto(video) {{
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            capturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
+            
+            if (currentStream) {{
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }}
+            
+            const preview = document.getElementById('camera-preview');
+            preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo">';
+            document.getElementById('clear-btn').style.display = 'inline-block';
+            
+            showSuccess('Photo captured successfully!');
+        }}
+
+        function handleFileSelect(event) {{
+            const file = event.target.files[0];
+            if (file) {{
+                const reader = new FileReader();
+                reader.onload = function(e) {{
+                    capturedPhoto = e.target.result;
+                    const preview = document.getElementById('camera-preview');
+                    preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Selected Photo">';
+                    document.getElementById('clear-btn').style.display = 'inline-block';
+                    showSuccess('Photo selected successfully!');
+                }};
+                reader.readAsDataURL(file);
+            }}
+        }}
+
+        function clearPhoto() {{
+            capturedPhoto = null;
+            document.getElementById('camera-preview').innerHTML = 
+                '<div>Click "Take Photo" to add photo</div>';
+            document.getElementById('clear-btn').style.display = 'none';
+            document.getElementById('file-input').value = '';
+        }}
+
+        function showError(message) {{
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {{ errorDiv.classList.remove('show'); }}, 5000);
+        }}
+
+        function showSuccess(message) {{
+            const successDiv = document.getElementById('success-message');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+            setTimeout(() => {{ successDiv.classList.remove('show'); }}, 3000);
+        }}
+
+        document.getElementById('donation-form').addEventListener('submit', async function(e) {{
+            e.preventDefault();
+            
+            if (!capturedPhoto) {{
+                showError('Please take or select a photo of the food');
+                return;
+            }}
+
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('donation-form').style.display = 'none';
+            document.getElementById('submit-btn').disabled = true;
+
+            try {{
+                const formData = new FormData();
+                formData.append('food_name', document.getElementById('food-name').value);
+                formData.append('food_desc', document.getElementById('food-notes').value);
+                formData.append('pickup_date', document.getElementById('pickup-date').value);
+                formData.append('pickup_time', document.getElementById('pickup-time').value);
+                formData.append('pick_up_address', document.getElementById('pickup-address').value || document.getElementById('pickup-address').input?.value);
+                formData.append('pick_up_lat', businessData.lat);
+                formData.append('pick_up_lng', businessData.lng);
+                formData.append('business_id', businessData.business_id);
+                formData.append('business_email', businessData.email);
+                formData.append('photo', capturedPhoto);
+                formData.append('token', '{token}');
+
+                const response = await fetch('/qr_donate_food', {{
+                    method: 'POST',
+                    body: formData
+                }});
+
+                const result = await response.json();
+
+                if (result.error === false) {{
+                    document.getElementById('loading').classList.remove('show');
+                    document.getElementById('donation-form').style.display = 'none';
+                    
+                    const container = document.querySelector('.form-container');
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px;">
+                            <div style="font-size: 64px; margin-bottom: 20px;">🎉</div>
+                            <h2 style="color: #28a745; margin-bottom: 15px;">Success!</h2>
+                            <p style="color: #666; margin-bottom: 20px;">Your food donation has been posted successfully!</p>
+                            <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                                <p style="color: #1976d2; margin-bottom: 10px;"><strong>What's Next?</strong></p>
+                                <p style="color: #424242; font-size: 14px;">Nearby recipients have been notified about your donation. They will contact you for pickup.</p>
+                            </div>
+                            <button onclick="location.reload()" class="btn btn-primary" style="width: 100%;">
+                                ➕ Donate More Food
+                            </button>
+                        </div>
+                    `;
+                }} else {{
+                    showError('Error: ' + result.message);
+                    document.getElementById('loading').classList.remove('show');
+                    document.getElementById('donation-form').style.display = 'block';
+                    document.getElementById('submit-btn').disabled = false;
+                }}
+            }} catch (error) {{
+                console.error('Error:', error);
+                showError('Network error. Please check your connection and try again.');
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('donation-form').style.display = 'block';
+                document.getElementById('submit-btn').disabled = false;
+            }}
+        }});
+    </script>
+    </body>
+    </html>
+        """
+        
+    except Exception as e:
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; margin: 0 auto;">
+                <h1 style="color: #ff6b6b;">❌ Error</h1>
+                <p>An error occurred while validating the QR code.</p>
+                <p style="font-size: 12px; color: #666;">{str(e)}</p>
+            </div>
+        </body>
+        </html>
+        """, 500
+
+
+@app.route('/volunteer/collect_food_qr', methods=['GET'])
+def volunteer_collect_food_page():
+    """Handle QR code scan for volunteer food collection"""
+    try:
+        # Get donation data from URL parameters
+        donation_data = request.args.get('data')
+        if not donation_data:
+            return "❌ Invalid QR code - no data found", 400
+        
+        # Decode the JSON data
+        import urllib.parse
+        decoded_data = urllib.parse.unquote(donation_data)
+        donation_info = json.loads(decoded_data)
+        
+        # Create a simple HTML page for volunteers
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Food Collection - Closing Time</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
+                .container {{ max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                .header {{ background: #4CAF50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }}
+                .info {{ background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 10px 0; }}
+                .label {{ font-weight: bold; color: #333; }}
+                .value {{ color: #666; margin-bottom: 8px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🍽️ Food Collection</h1>
+                    <p>Volunteer Pickup Information</p>
+                </div>
+                
+                <div class="info">
+                    <h3>📋 Collection Details</h3>
+                    <div class="label">Food Item:</div>
+                    <div class="value">{donation_info.get('food_name', 'N/A')}</div>
+                    
+                    <div class="label">Business:</div>
+                    <div class="value">{donation_info.get('business_name', 'N/A')}</div>
+                    
+                    <div class="label">Pickup Location:</div>
+                    <div class="value">{donation_info.get('pickup_location', 'N/A')}</div>
+                    
+                    <div class="label">Pickup Date:</div>
+                    <div class="value">{donation_info.get('pickup_date', 'N/A')}</div>
+                    
+                    <div class="label">Pickup Time:</div>
+                    <div class="value">{donation_info.get('pickup_time', 'N/A')}</div>
+                </div>
+                
+                <div class="info">
+                    <h3>✅ Collection Confirmed</h3>
+                    <p>Thank you for volunteering! You have successfully scanned the QR code for food collection.</p>
+                    <p><strong>Next Steps:</strong></p>
+                    <ul>
+                        <li>Go to the pickup location at the specified time</li>
+                        <li>Collect the food from the business</li>
+                        <li>Deliver to the assigned recipient</li>
+                    </ul>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return html_content
+        
+    except Exception as e:
+        return f"❌ Error processing QR code: {str(e)}", 400
+
+
 if __name__ == '__main__':
     # app.run(debug=True)
-    app.run()
+    # Listen on all interfaces (0.0.0.0) so phone can connect to laptop's IP
+    app.run(host='0.0.0.0', port=5005)  # Use port 5003 to avoid AirPlay conflict

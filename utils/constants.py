@@ -20,6 +20,16 @@ class Utils:
     delivered = "Delivered"
     already_assigned = "Already assigned to another Rider"
     miles = 10
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+    smtp_username = "sclosingtime@gmail.com"
+    smtp_password = "whmsuoiaozvfyaxp"  # Replace with your Gmail App Password
+    available = "Available"
+    qr_business_collection = "qr_business_registration"
+    # Server URL for QR codes - use your laptop's IP for testing from phone
+    server_url = "http://192.168.0.30:5005"  # Change to your server's public IP/domain in production
+    # QR token expiration time in hours
+    qr_token_expiry_hours = 2
 
 # def parse():
 #     json = [
