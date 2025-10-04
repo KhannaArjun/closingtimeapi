@@ -1781,7 +1781,7 @@ def send_donation_qr_code(business_email, business_name, donation_data, food_nam
 
 @app.route('/test_email', methods=['GET'])
 def test_email():
-    """Test email configuration"""
+    """Test email configuration with detailed debugging"""
     try:
         # Get SMTP settings
         smtp_username = os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
@@ -1789,28 +1789,124 @@ def test_email():
         smtp_server = os.environ.get('SMTP_SERVER', constants.Utils.smtp_server)
         smtp_port = int(os.environ.get('SMTP_PORT', constants.Utils.smtp_port))
         
-        # Test connection
-        server = smtplib.SMTP(smtp_server, smtp_port)
+        print(f"🔧 Testing SMTP Configuration:")
+        print(f"   Server: {smtp_server}")
+        print(f"   Port: {smtp_port}")
+        print(f"   Username: {smtp_username}")
+        print(f"   Password: {'*' * len(smtp_password) if smtp_password else 'None'}")
+        
+        # Test connection with timeout
+        print(f"📡 Attempting to connect to {smtp_server}:{smtp_port}")
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+        print(f"✅ Connected to SMTP server")
+        
+        print(f"🔐 Starting TLS...")
         server.starttls()
+        print(f"✅ TLS started successfully")
+        
+        print(f"🔑 Attempting login...")
         server.login(smtp_username, smtp_password)
+        print(f"✅ Login successful")
+        
         server.quit()
+        print(f"✅ Connection closed successfully")
         
         return flask.jsonify({
             "success": True,
             "message": "Email configuration is working!",
-            "smtp_server": smtp_server,
-            "smtp_port": smtp_port,
-            "smtp_username": smtp_username
+            "debug_info": {
+                "smtp_server": smtp_server,
+                "smtp_port": smtp_port,
+                "smtp_username": smtp_username,
+                "connection_test": "passed",
+                "tls_test": "passed",
+                "auth_test": "passed"
+            }
         })
         
-    except Exception as e:
+    except smtplib.SMTPConnectError as e:
+        error_msg = f"Failed to connect to SMTP server: {str(e)}"
+        print(f"❌ SMTP Connect Error: {error_msg}")
         return flask.jsonify({
             "success": False,
-            "message": f"Email configuration failed: {str(e)}",
-            "smtp_server": os.environ.get('SMTP_SERVER', constants.Utils.smtp_server),
-            "smtp_port": os.environ.get('SMTP_PORT', constants.Utils.smtp_port),
-            "smtp_username": os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
+            "error_type": "SMTPConnectError",
+            "message": error_msg,
+            "debug_info": {
+                "smtp_server": os.environ.get('SMTP_SERVER', constants.Utils.smtp_server),
+                "smtp_port": os.environ.get('SMTP_PORT', constants.Utils.smtp_port),
+                "smtp_username": os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username),
+                "possible_causes": ["Port blocked by cloud provider", "Wrong server/port", "Network connectivity issue"]
+            }
         }), 500
+        
+    except smtplib.SMTPAuthenticationError as e:
+        error_msg = f"SMTP authentication failed: {str(e)}"
+        print(f"❌ SMTP Auth Error: {error_msg}")
+        return flask.jsonify({
+            "success": False,
+            "error_type": "SMTPAuthenticationError",
+            "message": error_msg,
+            "debug_info": {
+                "smtp_server": os.environ.get('SMTP_SERVER', constants.Utils.smtp_server),
+                "smtp_port": os.environ.get('SMTP_PORT', constants.Utils.smtp_port),
+                "smtp_username": os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username),
+                "possible_causes": ["Wrong username/password", "App password not enabled", "2FA not enabled"]
+            }
+        }), 500
+        
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        print(f"❌ Unexpected Error: {error_msg}")
+        return flask.jsonify({
+            "success": False,
+            "error_type": "UnexpectedError",
+            "message": error_msg,
+            "debug_info": {
+                "smtp_server": os.environ.get('SMTP_SERVER', constants.Utils.smtp_server),
+                "smtp_port": os.environ.get('SMTP_PORT', constants.Utils.smtp_port),
+                "smtp_username": os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username),
+                "error_details": str(e)
+            }
+        }), 500
+
+@app.route('/test_smtp_configs', methods=['GET'])
+def test_smtp_configs():
+    """Test different SMTP configurations"""
+    configs = [
+        {"name": "Gmail Port 587", "server": "smtp.gmail.com", "port": 587},
+        {"name": "Gmail Port 465", "server": "smtp.gmail.com", "port": 465},
+        {"name": "SendGrid", "server": "smtp.sendgrid.net", "port": 587},
+        {"name": "Outlook", "server": "smtp-mail.outlook.com", "port": 587},
+    ]
+    
+    results = []
+    
+    for config in configs:
+        try:
+            print(f"🧪 Testing {config['name']}: {config['server']}:{config['port']}")
+            server = smtplib.SMTP(config['server'], config['port'], timeout=5)
+            server.quit()
+            results.append({
+                "config": config['name'],
+                "server": config['server'],
+                "port": config['port'],
+                "status": "✅ Connection successful"
+            })
+            print(f"✅ {config['name']} - Connection successful")
+        except Exception as e:
+            results.append({
+                "config": config['name'],
+                "server": config['server'],
+                "port": config['port'],
+                "status": f"❌ Failed: {str(e)}"
+            })
+            print(f"❌ {config['name']} - Failed: {str(e)}")
+    
+    return flask.jsonify({
+        "message": "SMTP Configuration Test Results",
+        "results": results,
+        "recommendation": "Try the configurations that show 'Connection successful'"
+    })
 
 @app.route('/send_test_email', methods=['POST'])
 def send_test_email():
