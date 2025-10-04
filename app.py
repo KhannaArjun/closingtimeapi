@@ -1331,10 +1331,10 @@ def send_qr_code_email(business_email, admin_email, business_name, qr_image_data
         # Don't raise exception - continue with business registration even if email fails
 
 
-def send_email_via_brevo_api(to_email, to_name, subject, html_content, sender_name="Closing Time", sender_email="sclosingtime@gmail.com"):
-    """Send email via Brevo Python SDK"""
+def send_email_via_brevo_api(to_email, to_name, subject, html_content, sender_name="Closing Time", sender_email="sclosingtime@gmail.com", attachment_data=None, attachment_name=None):
+    """Send email via Brevo Python SDK with optional attachment"""
     try:
-        from brevo_python import TransactionalEmailsApi, SendSmtpEmail, SendSmtpEmailSender, SendSmtpEmailTo
+        from brevo_python import TransactionalEmailsApi, SendSmtpEmail, SendSmtpEmailSender, SendSmtpEmailTo, SendSmtpEmailAttachment
         
         # Get Brevo API key from environment
         brevo_api_key = os.environ.get('BREVO_API_KEY')
@@ -1356,12 +1356,24 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, sender_na
         sender = SendSmtpEmailSender(name=sender_name, email=sender_email)
         to = [SendSmtpEmailTo(email=to_email, name=to_name)]
         
+        # Create email object
         email = SendSmtpEmail(
             sender=sender,
             to=to,
             subject=subject,
             html_content=html_content
         )
+        
+        # Add attachment if provided
+        if attachment_data and attachment_name:
+            import base64
+            attachment_content = base64.b64encode(attachment_data).decode('utf-8')
+            attachment = SendSmtpEmailAttachment(
+                content=attachment_content,
+                name=attachment_name
+            )
+            email.attachment = [attachment]
+            print(f"📎 Adding attachment: {attachment_name}")
         
         print(f"📧 Sending email via Brevo SDK to {to_email}")
         
@@ -1376,18 +1388,20 @@ def send_email_via_brevo_api(to_email, to_name, subject, html_content, sender_na
         return False
 
 
-def send_qr_code_email_via_brevo_api(business_email, admin_email, business_name, business_id):
+def send_qr_code_email_via_brevo_api(business_email, admin_email, business_name, business_id, qr_image_data=None):
     """Send QR code to business and admin emails via Brevo API"""
     try:
         # Get email template
         email_body = get_donor_registration_email_template(business_name, business_id)
         
-        # Send to business
+        # Send to business with QR code attachment
         business_email_sent = send_email_via_brevo_api(
             to_email=business_email,
             to_name=business_name,
-            subject=f"QR Code for {business_name} - Closing Time Food Donation",
-            html_content=email_body
+            subject=f"Registration successful {business_name} - ClosingTime",
+            html_content=email_body,
+            attachment_data=qr_image_data,
+            attachment_name=f"qr_code_{business_name.replace(' ', '_')}.png"
         )
         
         if not business_email_sent:
@@ -1621,7 +1635,8 @@ def register_business():
             business_email=input_data['email'],
             admin_email=input_data['admin_email'],
             business_name=input_data['business_name'],
-            business_id=business_id
+            business_id=business_id,
+            qr_image_data=qr_image_data
         )
         
         if email_sent:
