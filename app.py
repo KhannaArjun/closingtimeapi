@@ -2687,6 +2687,6 @@ def volunteer_collect_food_page():
 
 
 if __name__ == '__main__':
-    # app.run(debug=True)
+    app.run(debug=True)
     # Listen on all interfaces (0.0.0.0) so phone can connect to laptop's IP
-    app.run(host='0.0.0.0', port=5005)  # Use port 5003 to avoid AirPlay conflict
+    # app.run(host='0.0.0.0', port=5005)  # Use port 5003 to avoid AirPlay conflict
