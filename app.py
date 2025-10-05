@@ -2333,7 +2333,8 @@ def qr_scan_page():
         gmp-place-autocomplete .input-container input,
         gmp-place-autocomplete .pac-container,
         gmp-place-autocomplete .pac-item,
-        gmp-place-autocomplete .pac-item-query {{
+        gmp-place-autocomplete .pac-item-query,
+        gmp-place-autocomplete * {{
             color: black !important;
             background-color: white !important;
         }}
@@ -2348,6 +2349,23 @@ def qr_scan_page():
         gmp-place-autocomplete .pac-container .pac-item:hover {{
             background-color: #f5f5f5 !important;
             color: black !important;
+        }}
+        
+        /* Override any Google Maps styling */
+        .pac-container,
+        .pac-container *,
+        .pac-item,
+        .pac-item * {{
+            color: black !important;
+            background-color: white !important;
+        }}
+        
+        /* Force text color on focus and input */
+        gmp-place-autocomplete input:focus,
+        gmp-place-autocomplete input:active,
+        gmp-place-autocomplete input:visited {{
+            color: black !important;
+            background-color: white !important;
         }}
         .form-group textarea {{ 
             resize: vertical; 
@@ -2644,12 +2662,23 @@ def qr_scan_page():
                     console.error('Places API error:', event.error);
                 }});
                 
-                // Continuously force text color
+                // Continuously force text color and styling
                 setInterval(() => {{
                     const inputs = autocompleteElement.querySelectorAll('input');
                     inputs.forEach(input => {{
                         input.style.color = 'black';
                         input.style.setProperty('color', 'black', 'important');
+                        input.style.backgroundColor = 'white';
+                        input.style.setProperty('background-color', 'white', 'important');
+                    }});
+                    
+                    // Also force styling on dropdown items
+                    const pacItems = document.querySelectorAll('.pac-item');
+                    pacItems.forEach(item => {{
+                        item.style.color = 'black';
+                        item.style.setProperty('color', 'black', 'important');
+                        item.style.backgroundColor = 'white';
+                        item.style.setProperty('background-color', 'white', 'important');
                     }});
                 }}, 500);
             }} else {{
@@ -2697,18 +2726,32 @@ def qr_scan_page():
             
             capturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
             
+            // Stop camera immediately
             if (currentStream) {{
                 currentStream.getTracks().forEach(track => track.stop());
                 currentStream = null;
             }}
             
-            const preview = document.getElementById('camera-preview');
-            preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="max-width: 100%; height: auto; border-radius: 8px; border: 2px solid #ffb366;">';
-            preview.style.display = 'block';
-            document.getElementById('clear-btn').style.display = 'inline-block';
+            // Hide camera container first
+            const cameraContainer = document.getElementById('camera-container');
+            if (cameraContainer) {{
+                cameraContainer.style.display = 'none';
+            }}
             
-            // Hide camera container
-            document.getElementById('camera-container').style.display = 'none';
+            // Show preview container and add image
+            const preview = document.getElementById('camera-preview');
+            if (preview) {{
+                preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="max-width: 100%; height: auto; border-radius: 8px; border: 2px solid #ffb366; display: block;">';
+                preview.style.display = 'block';
+                preview.style.visibility = 'visible';
+                preview.style.opacity = '1';
+            }}
+            
+            // Show clear button
+            const clearBtn = document.getElementById('clear-btn');
+            if (clearBtn) {{
+                clearBtn.style.display = 'inline-block';
+            }}
             
             showSuccess('Photo captured successfully!');
         }}
