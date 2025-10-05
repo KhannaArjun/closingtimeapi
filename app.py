@@ -2546,7 +2546,7 @@ def qr_scan_page():
                     
                     <!-- Video container for live camera -->
                     <div id="video-container" style="display: none; width: 100%; height: 250px; background: #000; border-radius: 12px; overflow: hidden; position: relative;">
-                        <video id="camera-video" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                        <video id="camera-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                         <button type="button" id="capture-btn" class="btn btn-success" onclick="captureFromVideo()" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">📸 Capture</button>
                     </div>
                     
@@ -2684,7 +2684,6 @@ def qr_scan_page():
                         
                         const video = document.getElementById('camera-video');
                         video.srcObject = stream;
-                        video.play();
                         
                         // Show video container, hide preview
                         document.getElementById('video-container').style.display = 'block';
