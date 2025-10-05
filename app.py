@@ -53,7 +53,9 @@ try:
         # Try the newer service account key first
         try:
             cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-daa665d59c.json")
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': 'closingtime-e1fe0.appspot.com'
+            })
             FIREBASE_ENABLED = True
             print("✅ Firebase Admin SDK initialized successfully with newer key")
         except Exception as e1:
@@ -61,7 +63,9 @@ try:
             # Try the older service account key as fallback
             try:
                 cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
-                firebase_admin.initialize_app(cred)
+                firebase_admin.initialize_app(cred, {
+                    'storageBucket': 'closingtime-e1fe0.appspot.com'
+                })
                 FIREBASE_ENABLED = True
                 print("✅ Firebase Admin SDK initialized successfully with fallback key")
             except Exception as e2:
