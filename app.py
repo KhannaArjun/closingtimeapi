@@ -2547,7 +2547,8 @@ def qr_scan_page():
                         <div>Click "Take Photo" to add photo</div>
                     </div>
                     <div class="camera-controls">
-                        <button type="button" class="btn btn-primary" onclick="startCamera()">📷 Take Photo</button>
+                        <button type="button" id="take-photo-btn" class="btn btn-primary" onclick="startCamera()">📷 Take Photo</button>
+                        <button type="button" id="retake-btn" class="btn btn-warning" onclick="retakePhoto()" style="display: none;">🔄 Retake</button>
                         <button type="button" class="btn btn-secondary" onclick="clearPhoto()" style="display: none;" id="clear-btn">🗑️ Clear</button>
                     </div>
                     <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
@@ -2622,8 +2623,8 @@ def qr_scan_page():
             const input = document.getElementById('pickup-address');
             if (input && window.google && window.google.maps) {{
                 // Pre-populate with donor address if available
-                const donorAddress = '{{ donor_address if donor_address else "" }}';
-                if (donorAddress) {{
+                const donorAddress = '{donor_address if donor_address else ""}';
+                if (donorAddress && donorAddress !== 'None') {{
                     input.value = donorAddress;
                 }}
                 
@@ -2706,12 +2707,6 @@ def qr_scan_page():
                 currentStream = null;
             }}
             
-            // Hide camera container first
-            const cameraContainer = document.getElementById('camera-container');
-            if (cameraContainer) {{
-                cameraContainer.style.display = 'none';
-            }}
-            
             // Show preview container and add image
             const preview = document.getElementById('camera-preview');
             if (preview) {{
@@ -2721,10 +2716,21 @@ def qr_scan_page():
                 preview.style.justifyContent = 'center';
             }}
             
-            // Show clear button
+            // Show clear and retake buttons
             const clearBtn = document.getElementById('clear-btn');
             if (clearBtn) {{
                 clearBtn.style.display = 'inline-block';
+            }}
+            
+            // Hide take photo button, show retake button
+            const takePhotoBtn = document.getElementById('take-photo-btn');
+            if (takePhotoBtn) {{
+                takePhotoBtn.style.display = 'none';
+            }}
+            
+            const retakeBtn = document.getElementById('retake-btn');
+            if (retakeBtn) {{
+                retakeBtn.style.display = 'inline-block';
             }}
             
             showSuccess('Photo captured successfully!');
@@ -2751,6 +2757,23 @@ def qr_scan_page():
                 '<div>Click "Take Photo" to add photo</div>';
             document.getElementById('clear-btn').style.display = 'none';
             document.getElementById('file-input').value = '';
+            
+            // Show take photo button again, hide retake button
+            const takePhotoBtn = document.getElementById('take-photo-btn');
+            if (takePhotoBtn) {{
+                takePhotoBtn.style.display = 'inline-block';
+            }}
+            
+            const retakeBtn = document.getElementById('retake-btn');
+            if (retakeBtn) {{
+                retakeBtn.style.display = 'none';
+            }}
+        }}
+        
+        function retakePhoto() {{
+            // Clear the current photo and restart camera
+            clearPhoto();
+            startCamera();
         }}
 
         function showError(message) {{
