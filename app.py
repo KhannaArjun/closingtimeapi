@@ -837,6 +837,9 @@ def accept_food():
         tokens.append(item['firebase_token'])
 
     send_notifications_to_volunteers(tokens, add_food_obj['food_name'])
+    
+    # Send email notifications to nearby volunteers
+    send_volunteer_email_notifications(ids, add_food_obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
 
@@ -1777,18 +1780,8 @@ def qr_donate_food():
             tokens = [item['firebase_token'] for item in recipients_firebase_tokens]
             send_notifications_to_recipients(tokens, food_name, f"New food donation available")
         
-        # Generate QR code for this specific donation
-        donation_qr_data = {
-            'food_id': str(food_id),
-            'food_name': food_name,
-            'business_name': business_info['business_name'],
-            'pickup_location': pick_up_address,
-            'pickup_date': pickup_date,
-            'pickup_time': pickup_time
-        }
-        
-        # Create and send donation QR code
-        send_donation_qr_code(business_email, business_info['business_name'], donation_qr_data, food_name)
+        # Note: QR code generation and email to donor removed
+        # Volunteers will be notified directly when recipients accept the food
         
         response_data = {
             'food_id': str(food_id),
@@ -1799,7 +1792,7 @@ def qr_donate_food():
             'pickup_time': pickup_time,
             'photo_url': photo_url,
             'nearby_recipients': len(nearby_recipient_ids),
-            'message': 'Food donation posted successfully! QR code sent to business email.'
+            'message': 'Food donation posted successfully! Nearby recipients have been notified.'
         }
         
         return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, response_data))
@@ -1838,6 +1831,81 @@ def upload_photo_to_firebase(photo_data, business_id, food_name):
     except Exception as e:
         print(f"Error uploading photo to Firebase: {e}")
         return None
+
+
+def send_volunteer_email_notifications(volunteer_ids, food_data):
+    """Send email notifications to nearby volunteers about food pickup opportunity"""
+    try:
+        if not volunteer_ids or len(volunteer_ids) == 0:
+            print("⚠️  No volunteers found for email notification")
+            return
+        
+        # Get volunteer details
+        volunteer_registration_col = getCollectionName('volunteer_registration')
+        volunteers = volunteer_registration_col.find({'_id': {'$in': [ObjectId(vid) for vid in volunteer_ids]}})
+        
+        for volunteer in volunteers:
+            try:
+                volunteer_email = volunteer.get('email')
+                volunteer_name = volunteer.get('name', 'Volunteer')
+                
+                if not volunteer_email:
+                    print(f"⚠️  No email found for volunteer: {volunteer_name}")
+                    continue
+                
+                # Email content
+                subject = f"Food Pickup Opportunity - {food_data['food_name']}"
+                html_content = f"""
+                <html>
+                <body>
+                    <h2>🍽️ Food Pickup Opportunity</h2>
+                    <p>Hello {volunteer_name},</p>
+                    <p>A nearby food donation is ready for pickup!</p>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <h3>Pickup Details:</h3>
+                        <ul>
+                            <li><strong>Food:</strong> {food_data['food_name']}</li>
+                            <li><strong>Business:</strong> {food_data['business_name']}</li>
+                            <li><strong>Pickup Date:</strong> {food_data['pick_up_date']}</li>
+                            <li><strong>Pickup Time:</strong> {food_data['pick_up_time']}</li>
+                            <li><strong>Location:</strong> {food_data['pick_up_address']}</li>
+                        </ul>
+                    </div>
+                    
+                    <p><strong>Instructions:</strong></p>
+                    <ol>
+                        <li>Go to the pickup location at the scheduled time</li>
+                        <li>Contact the business staff to collect the food</li>
+                        <li>Deliver the food to the accepting recipient</li>
+                        <li>Mark the delivery as complete in the app</li>
+                    </ol>
+                    
+                    <p>Thank you for helping reduce food waste in our community!</p>
+                    <p>Best regards,<br>Closing Time Team</p>
+                </body>
+                </html>
+                """
+                
+                # Send email using Brevo API
+                success = send_email_via_brevo_api(
+                    to_email=volunteer_email,
+                    to_name=volunteer_name,
+                    subject=subject,
+                    html_content=html_content
+                )
+                
+                if success:
+                    print(f"✅ Volunteer email sent to: {volunteer_name} ({volunteer_email})")
+                else:
+                    print(f"❌ Failed to send volunteer email to: {volunteer_name} ({volunteer_email})")
+                    
+            except Exception as e:
+                print(f"❌ Error sending email to volunteer {volunteer.get('name', 'Unknown')}: {e}")
+                continue
+                
+    except Exception as e:
+        print(f"❌ Error in send_volunteer_email_notifications: {e}")
 
 
 def send_donation_qr_code(business_email, business_name, donation_data, food_name):
