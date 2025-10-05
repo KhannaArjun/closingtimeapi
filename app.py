@@ -2543,9 +2543,18 @@ def qr_scan_page():
             <form id="donation-form">
                 <div class="camera-container">
                     <label>📷 Food Photo <span class="required">*</span></label>
+                    
+                    <!-- Video container for live camera -->
+                    <div id="video-container" style="display: none; width: 100%; height: 250px; background: #000; border-radius: 12px; overflow: hidden; position: relative;">
+                        <video id="camera-video" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                        <button type="button" id="capture-btn" class="btn btn-success" onclick="captureFromVideo()" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">📸 Capture</button>
+                    </div>
+                    
+                    <!-- Preview container for captured image -->
                     <div id="camera-preview">
                         <div>Click "Take Photo" to add photo</div>
                     </div>
+                    
                     <div class="camera-controls">
                         <button type="button" id="take-photo-btn" class="btn btn-primary" onclick="startCamera()">📷 Take Photo</button>
                         <button type="button" id="retake-btn" class="btn btn-warning" onclick="retakePhoto()" style="display: none;">🔄 Retake</button>
@@ -2665,23 +2674,14 @@ def qr_scan_page():
                 navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }})
                     .then(function(stream) {{
                         currentStream = stream;
-                        const video = document.createElement('video');
+                        
+                        const video = document.getElementById('camera-video');
                         video.srcObject = stream;
-                        video.autoplay = true;
-                        video.playsInline = true;
                         
-                        const preview = document.getElementById('camera-preview');
-                        preview.innerHTML = '';
-                        preview.appendChild(video);
-                        preview.style.display = 'flex';
-                        
-                        const captureBtn = document.createElement('button');
-                        captureBtn.className = 'btn btn-success';
-                        captureBtn.textContent = '📸 Capture';
-                        captureBtn.style.marginTop = '10px';
-                        captureBtn.style.width = '100%';
-                        captureBtn.onclick = function() {{ capturePhoto(video); }};
-                        preview.appendChild(captureBtn);
+                        // Show video container, hide preview
+                        document.getElementById('video-container').style.display = 'block';
+                        document.getElementById('camera-preview').style.display = 'none';
+                        document.getElementById('take-photo-btn').style.display = 'none';
                     }})
                     .catch(function(error) {{
                         console.error('Error accessing camera:', error);
@@ -2692,7 +2692,8 @@ def qr_scan_page():
             }}
         }}
 
-        function capturePhoto(video) {{
+        function captureFromVideo() {{
+            const video = document.getElementById('camera-video');
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -2707,31 +2708,17 @@ def qr_scan_page():
                 currentStream = null;
             }}
             
-            // Show preview container and add image
+            // Hide video container
+            document.getElementById('video-container').style.display = 'none';
+            
+            // Show preview container with captured image
             const preview = document.getElementById('camera-preview');
-            if (preview) {{
-                preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">';
-                preview.style.display = 'flex';
-                preview.style.alignItems = 'center';
-                preview.style.justifyContent = 'center';
-            }}
+            preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">';
+            preview.style.display = 'flex';
             
-            // Show clear and retake buttons
-            const clearBtn = document.getElementById('clear-btn');
-            if (clearBtn) {{
-                clearBtn.style.display = 'inline-block';
-            }}
-            
-            // Hide take photo button, show retake button
-            const takePhotoBtn = document.getElementById('take-photo-btn');
-            if (takePhotoBtn) {{
-                takePhotoBtn.style.display = 'none';
-            }}
-            
-            const retakeBtn = document.getElementById('retake-btn');
-            if (retakeBtn) {{
-                retakeBtn.style.display = 'inline-block';
-            }}
+            // Show retake and clear buttons
+            document.getElementById('retake-btn').style.display = 'inline-block';
+            document.getElementById('clear-btn').style.display = 'inline-block';
             
             showSuccess('Photo captured successfully!');
         }}
@@ -2753,26 +2740,40 @@ def qr_scan_page():
 
         function clearPhoto() {{
             capturedPhoto = null;
-            document.getElementById('camera-preview').innerHTML = 
-                '<div>Click "Take Photo" to add photo</div>';
+            
+            // Stop camera if running
+            if (currentStream) {{
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }}
+            
+            // Hide video container
+            document.getElementById('video-container').style.display = 'none';
+            
+            // Reset preview
+            const preview = document.getElementById('camera-preview');
+            preview.innerHTML = '<div>Click "Take Photo" to add photo</div>';
+            preview.style.display = 'flex';
+            
+            // Reset buttons
+            document.getElementById('take-photo-btn').style.display = 'inline-block';
+            document.getElementById('retake-btn').style.display = 'none';
             document.getElementById('clear-btn').style.display = 'none';
             document.getElementById('file-input').value = '';
-            
-            // Show take photo button again, hide retake button
-            const takePhotoBtn = document.getElementById('take-photo-btn');
-            if (takePhotoBtn) {{
-                takePhotoBtn.style.display = 'inline-block';
-            }}
-            
-            const retakeBtn = document.getElementById('retake-btn');
-            if (retakeBtn) {{
-                retakeBtn.style.display = 'none';
-            }}
         }}
         
         function retakePhoto() {{
-            // Clear the current photo and restart camera
-            clearPhoto();
+            // Stop current camera if running
+            if (currentStream) {{
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }}
+            
+            // Hide buttons
+            document.getElementById('retake-btn').style.display = 'none';
+            document.getElementById('clear-btn').style.display = 'none';
+            
+            // Restart camera
             startCamera();
         }}
 
