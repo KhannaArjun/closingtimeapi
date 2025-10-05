@@ -2556,9 +2556,7 @@ def qr_scan_page():
                     </div>
                     
                     <div class="camera-controls">
-                        <button type="button" id="take-photo-btn" class="btn btn-primary" onclick="startCamera()">📷 Take Photo</button>
-                        <button type="button" id="retake-btn" class="btn btn-warning" onclick="retakePhoto()" style="display: none;">🔄 Retake</button>
-                        <button type="button" class="btn btn-secondary" onclick="clearPhoto()" style="display: none;" id="clear-btn">🗑️ Clear</button>
+                        <button type="button" id="camera-btn" class="btn btn-primary" onclick="startCamera()">📷 Take Photo</button>
                     </div>
                     <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
                 </div>
@@ -2670,6 +2668,15 @@ def qr_scan_page():
         }}
 
         function startCamera() {{
+            // Clear previous captured photo when starting camera
+            capturedPhoto = null;
+            
+            // Stop any existing camera stream
+            if (currentStream) {{
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }}
+            
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
                 navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }})
                     .then(function(stream) {{
@@ -2677,11 +2684,16 @@ def qr_scan_page():
                         
                         const video = document.getElementById('camera-video');
                         video.srcObject = stream;
+                        video.play();
                         
                         // Show video container, hide preview
                         document.getElementById('video-container').style.display = 'block';
                         document.getElementById('camera-preview').style.display = 'none';
-                        document.getElementById('take-photo-btn').style.display = 'none';
+                        
+                        // Change button to Capture
+                        const btn = document.getElementById('camera-btn');
+                        btn.textContent = '📸 Capture';
+                        btn.onclick = captureFromVideo;
                     }})
                     .catch(function(error) {{
                         console.error('Error accessing camera:', error);
@@ -2716,9 +2728,10 @@ def qr_scan_page():
             preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">';
             preview.style.display = 'flex';
             
-            // Show retake and clear buttons
-            document.getElementById('retake-btn').style.display = 'inline-block';
-            document.getElementById('clear-btn').style.display = 'inline-block';
+            // Change button to Re-capture
+            const btn = document.getElementById('camera-btn');
+            btn.textContent = '🔄 Re-capture';
+            btn.onclick = startCamera;
             
             showSuccess('Photo captured successfully!');
         }}
@@ -2738,44 +2751,6 @@ def qr_scan_page():
             }}
         }}
 
-        function clearPhoto() {{
-            capturedPhoto = null;
-            
-            // Stop camera if running
-            if (currentStream) {{
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
-            }}
-            
-            // Hide video container
-            document.getElementById('video-container').style.display = 'none';
-            
-            // Reset preview
-            const preview = document.getElementById('camera-preview');
-            preview.innerHTML = '<div>Click "Take Photo" to add photo</div>';
-            preview.style.display = 'flex';
-            
-            // Reset buttons
-            document.getElementById('take-photo-btn').style.display = 'inline-block';
-            document.getElementById('retake-btn').style.display = 'none';
-            document.getElementById('clear-btn').style.display = 'none';
-            document.getElementById('file-input').value = '';
-        }}
-        
-        function retakePhoto() {{
-            // Stop current camera if running
-            if (currentStream) {{
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
-            }}
-            
-            // Hide buttons
-            document.getElementById('retake-btn').style.display = 'none';
-            document.getElementById('clear-btn').style.display = 'none';
-            
-            // Restart camera
-            startCamera();
-        }}
 
         function showError(message) {{
             const errorDiv = document.getElementById('error-message');
