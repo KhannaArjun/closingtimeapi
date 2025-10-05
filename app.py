@@ -2367,6 +2367,27 @@ def qr_scan_page():
             color: black !important;
             background-color: white !important;
         }}
+        
+        /* Regular input styling for address */
+        #pickup-address {{
+            color: black !important;
+            background-color: white !important;
+        }}
+        
+        /* Google Places dropdown styling */
+        .pac-container {{
+            background-color: white !important;
+            border: 1px solid #ccc !important;
+        }}
+        
+        .pac-item {{
+            color: black !important;
+            background-color: white !important;
+        }}
+        
+        .pac-item:hover {{
+            background-color: #f5f5f5 !important;
+        }}
         .form-group textarea {{ 
             resize: vertical; 
             min-height: 90px; 
@@ -2549,7 +2570,7 @@ def qr_scan_page():
 
                 <div class="form-group">
                     <label for="pickup-address">Pickup Address <span class="required">*</span></label>
-                    <gmp-place-autocomplete id="pickup-address" placeholder="Start typing your address..." required></gmp-place-autocomplete>
+                    <input type="text" id="pickup-address" placeholder="Start typing your address..." required style="color: black !important; background-color: white !important;">
                     <small style="color: #cc6600; font-size: 13px; margin-top: 5px; display: block;">Start typing to see address suggestions</small>
                 </div>
 
@@ -2598,91 +2619,43 @@ def qr_scan_page():
         }});
         
         function initializePlacesAutocomplete() {{
-            const autocompleteElement = document.getElementById('pickup-address');
-            if (autocompleteElement && window.google && window.google.maps) {{
-                // Configure the new PlaceAutocompleteElement
-                // Note: componentRestrictions is not available in the new API
-                // You can set restrictions via the API key restrictions in Google Cloud Console
-                
+            const input = document.getElementById('pickup-address');
+            if (input && window.google && window.google.maps) {{
                 // Pre-populate with donor address if available
                 const donorAddress = '{{ donor_address if donor_address else "" }}';
                 if (donorAddress) {{
-                    setTimeout(() => {{
-                        const input = autocompleteElement.querySelector('input');
-                        if (input) {{
-                            input.value = donorAddress;
-                            input.style.color = 'black';
-                            input.style.setProperty('color', 'black', 'important');
-                        }}
-                    }}, 200);
+                    input.value = donorAddress;
                 }}
                 
-                // Force text color after element loads
-                setTimeout(() => {{
-                    const inputs = autocompleteElement.querySelectorAll('input');
-                    inputs.forEach(input => {{
-                        input.style.color = 'black';
-                        input.style.setProperty('color', 'black', 'important');
-                        input.style.backgroundColor = 'white';
-                        input.style.setProperty('background-color', 'white', 'important');
-                        
-                        // Listen for input changes to maintain black text
-                        input.addEventListener('input', () => {{
-                            input.style.color = 'black';
-                            input.style.setProperty('color', 'black', 'important');
-                        }});
-                        
-                        input.addEventListener('focus', () => {{
-                            input.style.color = 'black';
-                            input.style.setProperty('color', 'black', 'important');
-                        }});
-                    }});
-                }}, 100);
+                // Initialize Google Places Autocomplete
+                const autocomplete = new google.maps.places.Autocomplete(input, {{
+                    componentRestrictions: {{ country: 'us' }},
+                    types: ['address']
+                }});
                 
                 // Listen for place selection
-                autocompleteElement.addEventListener('gmp-placeselect', (event) => {{
-                    const place = event.place;
-                    console.log('Address selected:', place.formattedAddress);
-                    if (place.location) {{
-                        console.log('Coordinates:', place.location.lat, place.location.lng);
-                    }}
-                    
-                    // Force black text color after selection
-                    setTimeout(() => {{
-                        const inputs = autocompleteElement.querySelectorAll('input');
-                        inputs.forEach(input => {{
-                            input.style.color = 'black';
-                            input.style.setProperty('color', 'black', 'important');
-                        }});
-                    }}, 100);
-                }});
-                
-                // Listen for any errors
-                autocompleteElement.addEventListener('gmp-error', (event) => {{
-                    console.error('Places API error:', event.error);
-                }});
-                
-                // Continuously force text color and styling
-                setInterval(() => {{
-                    const inputs = autocompleteElement.querySelectorAll('input');
-                    inputs.forEach(input => {{
+                autocomplete.addListener('place_changed', function() {{
+                    const place = autocomplete.getPlace();
+                    if (place.formatted_address) {{
+                        console.log('Address selected:', place.formatted_address);
                         input.style.color = 'black';
                         input.style.setProperty('color', 'black', 'important');
-                        input.style.backgroundColor = 'white';
-                        input.style.setProperty('background-color', 'white', 'important');
-                    }});
-                    
-                    // Also force styling on dropdown items
-                    const pacItems = document.querySelectorAll('.pac-item');
-                    pacItems.forEach(item => {{
-                        item.style.color = 'black';
-                        item.style.setProperty('color', 'black', 'important');
-                        item.style.backgroundColor = 'white';
-                        item.style.setProperty('background-color', 'white', 'important');
-                    }});
-                }}, 500);
+                    }}
+                }});
+                
+                // Ensure text color is always black
+                input.addEventListener('input', function() {{
+                    input.style.color = 'black';
+                    input.style.setProperty('color', 'black', 'important');
+                }});
+                
+                input.addEventListener('focus', function() {{
+                    input.style.color = 'black';
+                    input.style.setProperty('color', 'black', 'important');
+                }});
+                
             }} else {{
-                console.log('Google Maps API not loaded or PlaceAutocompleteElement unavailable');
+                console.log('Google Maps API not loaded');
             }}
         }}
 
@@ -2699,6 +2672,7 @@ def qr_scan_page():
                         const preview = document.getElementById('camera-preview');
                         preview.innerHTML = '';
                         preview.appendChild(video);
+                        preview.style.display = 'flex';
                         
                         const captureBtn = document.createElement('button');
                         captureBtn.className = 'btn btn-success';
@@ -2741,10 +2715,10 @@ def qr_scan_page():
             // Show preview container and add image
             const preview = document.getElementById('camera-preview');
             if (preview) {{
-                preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="max-width: 100%; height: auto; border-radius: 8px; border: 2px solid #ffb366; display: block;">';
-                preview.style.display = 'block';
-                preview.style.visibility = 'visible';
-                preview.style.opacity = '1';
+                preview.innerHTML = '<img src="' + capturedPhoto + '" alt="Captured Photo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">';
+                preview.style.display = 'flex';
+                preview.style.alignItems = 'center';
+                preview.style.justifyContent = 'center';
             }}
             
             // Show clear button
@@ -2811,7 +2785,7 @@ def qr_scan_page():
                 formData.append('food_desc', document.getElementById('food-notes').value);
                 formData.append('pickup_date', document.getElementById('pickup-date').value);
                 formData.append('pickup_time', document.getElementById('pickup-time').value);
-                formData.append('pick_up_address', document.getElementById('pickup-address').value || document.getElementById('pickup-address').input?.value);
+                formData.append('pick_up_address', document.getElementById('pickup-address').value);
                 formData.append('pick_up_lat', businessData.lat);
                 formData.append('pick_up_lng', businessData.lng);
                 formData.append('business_id', businessData.business_id);
