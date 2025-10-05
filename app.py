@@ -2809,7 +2809,7 @@ def qr_scan_page():
                             <p style="color: #666; margin-bottom: 20px;">Your food donation has been posted successfully!</p>
                             <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
                                 <p style="color: #1976d2; margin-bottom: 10px;"><strong>What's Next?</strong></p>
-                                <p style="color: #424242; font-size: 14px;">Nearby recipients have been notified about your donation. They will contact you for pickup.</p>
+                                <p style="color: #424242; font-size: 14px;">Volunteers will pickup your donation on the scheduled date and time.</p>
                             </div>
                             <button onclick="location.reload()" class="btn btn-primary" style="width: 100%;">
                                 ➕ Donate More Food
