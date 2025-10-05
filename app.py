@@ -67,18 +67,38 @@ try:
         
         # If environment config failed or not available, try local files
         if not FIREBASE_ENABLED:
-            # Try the newer service account key first
+            # Try the NEWEST service account key first (e732fc6e97) - production path
             try:
                 cred = credentials.Certificate("/etc/secrets/closingtime-e1fe0-firebase-adminsdk-1zdrb-e732fc6e97.json")
                 firebase_admin.initialize_app(cred, {
                     'storageBucket': 'closingtime-e1fe0.appspot.com'
                 })
                 FIREBASE_ENABLED = True
-                print("✅ Firebase Admin SDK initialized successfully with newer key")
-            except Exception as e1:
-                # Try the older service account key as fallback
-                print("❌ Firebase initialization failed - photo uploads will be disabled")
-                FIREBASE_ENABLED = False
+                print("✅ Firebase Admin SDK initialized successfully with NEWEST key (e732fc6e97)")
+            except Exception as e0:
+                print(f"⚠️  Failed to initialize with NEWEST key: {e0}")
+                # Try the newer service account key as fallback - production path
+                try:
+                    cred = credentials.Certificate("/etc/secrets/closingtime-e1fe0-firebase-adminsdk-1zdrb-daa665d59c.json")
+                    firebase_admin.initialize_app(cred, {
+                        'storageBucket': 'closingtime-e1fe0.appspot.com'
+                    })
+                    FIREBASE_ENABLED = True
+                    print("✅ Firebase Admin SDK initialized successfully with newer key")
+                except Exception as e1:
+                    print(f"⚠️  Failed to initialize with newer key: {e1}")
+                    # Try the older service account key as final fallback - production path
+                    try:
+                        cred = credentials.Certificate("/etc/secrets/closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
+                        firebase_admin.initialize_app(cred, {
+                            'storageBucket': 'closingtime-e1fe0.appspot.com'
+                        })
+                        FIREBASE_ENABLED = True
+                        print("✅ Firebase Admin SDK initialized successfully with oldest key")
+                    except Exception as e2:
+                        print(f"⚠️  Failed to initialize with oldest key: {e2}")
+                        print("❌ Firebase initialization failed - photo uploads will be disabled")
+                        FIREBASE_ENABLED = False
                 
     else:
         FIREBASE_ENABLED = True
@@ -1821,7 +1841,7 @@ def upload_photo_to_firebase(photo_data, business_id, food_name):
 
 
 def send_donation_qr_code(business_email, business_name, donation_data, food_name):
-    """Send QR code for specific food donation to business"""
+    """Send QR code for specific food donation to business using Brevo API"""
     try:
         # Generate QR code for this donation with URL
         qr_code_data = f"{constants.Utils.server_url}/volunteer/collect_food_qr?data={json.dumps(donation_data).replace(' ', '%20')}"
@@ -1838,22 +1858,8 @@ def send_donation_qr_code(business_email, business_name, donation_data, food_nam
         img_buffer.seek(0)
         qr_image_data = img_buffer.getvalue()
         
-        # Email configuration - use environment variables first, fallback to constants
-        smtp_username = os.environ.get('SMTP_USERNAME', constants.Utils.smtp_username)
-        smtp_password = os.environ.get('SMTP_PASSWORD', constants.Utils.smtp_password)
-        smtp_server = os.environ.get('SMTP_SERVER', constants.Utils.smtp_server)
-        smtp_port = int(os.environ.get('SMTP_PORT', constants.Utils.smtp_port))
-        
-        # Check if SMTP credentials are available
-        if not smtp_username or not smtp_password:
-            print(f"⚠️  SMTP credentials not configured. Skipping donation email for {business_name}")
-            return False
-        
-        # Create message
-        msg = MIMEMultipart()
-        msg['From'] = smtp_username
-        msg['To'] = business_email
-        msg['Subject'] = f"New Food Donation QR Code - {food_name}"
+        # Email content
+        subject = f"New Food Donation QR Code - {food_name}"
         
         # Email body
         body = f"""
@@ -1881,24 +1887,21 @@ def send_donation_qr_code(business_email, business_name, donation_data, food_nam
         </html>
         """
         
-        msg.attach(MIMEText(body, 'html'))
+        # Send email using Brevo API with QR code attachment
+        success = send_email_via_brevo_api(
+            to_email=business_email,
+            to_name=business_name,
+            subject=subject,
+            html_content=body,
+            attachment_data=qr_image_data,
+            attachment_name=f'donation_qr_{food_name}.png'
+        )
         
-        # Attach QR code
-        qr_attachment = MIMEImage(qr_image_data)
-        qr_attachment.add_header('Content-Disposition', 'attachment', filename=f'donation_qr_{food_name}.png')
-        msg.attach(qr_attachment)
-        
-        # Send email
-        try:
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
-            server.login(smtp_username, smtp_password)
-            server.send_message(msg)
-            server.quit()
+        if success:
             print(f"✅ Donation QR code sent to {business_name}")
             return True
-        except Exception as email_error:
-            print(f"❌ Failed to send donation QR code: {email_error}")
+        else:
+            print(f"❌ Failed to send donation QR code to {business_name}")
             return False
         
     except Exception as e:
