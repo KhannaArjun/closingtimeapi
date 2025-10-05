@@ -2545,9 +2545,8 @@ def qr_scan_page():
                     <label>📷 Food Photo <span class="required">*</span></label>
                     
                     <!-- Video container for live camera -->
-                    <div id="video-container" style="display: none; width: 100%; height: 250px; background: #000; border-radius: 12px; overflow: hidden; position: relative;">
+                    <div id="video-container" style="display: none; width: 100%; height: 250px; background: #000; border-radius: 12px; overflow: hidden;">
                         <video id="camera-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                        <button type="button" id="capture-btn" class="btn btn-success" onclick="captureFromVideo()" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">📸 Capture</button>
                     </div>
                     
                     <!-- Preview container for captured image -->
