@@ -69,26 +69,17 @@ try:
         if not FIREBASE_ENABLED:
             # Try the newer service account key first
             try:
-                cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-daa665d59c.json")
+                cred = credentials.Certificate("/etc/secrets/closingtime-e1fe0-firebase-adminsdk-1zdrb-e732fc6e97.json")
                 firebase_admin.initialize_app(cred, {
                     'storageBucket': 'closingtime-e1fe0.appspot.com'
                 })
                 FIREBASE_ENABLED = True
                 print("✅ Firebase Admin SDK initialized successfully with newer key")
             except Exception as e1:
-                print(f"⚠️  Failed to initialize with newer key: {e1}")
                 # Try the older service account key as fallback
-                try:
-                    cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
-                    firebase_admin.initialize_app(cred, {
-                        'storageBucket': 'closingtime-e1fe0.appspot.com'
-                    })
-                    FIREBASE_ENABLED = True
-                    print("✅ Firebase Admin SDK initialized successfully with fallback key")
-                except Exception as e2:
-                    print(f"⚠️  Failed to initialize with fallback key: {e2}")
-                    print("❌ Firebase initialization failed - photo uploads will be disabled")
-                    FIREBASE_ENABLED = False
+                print("❌ Firebase initialization failed - photo uploads will be disabled")
+                FIREBASE_ENABLED = False
+                
     else:
         FIREBASE_ENABLED = True
         print("✅ Firebase Admin SDK already initialized")
@@ -1213,7 +1204,7 @@ def _get_access_token():
   :return: Access token.
   """
     credentials = ServiceAccountCredentials.from_json_keyfile_name(
-        '/Users/srikamalteja/Desktop/closingtime_backend/closingtimeapi/closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json',
+        '/etc/secrets/closingtime-e1fe0-firebase-adminsdk-1zdrb-e732fc6e97.json',
         'https://www.googleapis.com/auth/firebase.messaging')
     access_token_info = credentials.get_access_token()
     return access_token_info.access_token
