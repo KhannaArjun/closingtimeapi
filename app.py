@@ -50,34 +50,52 @@ FIREBASE_ENABLED = False
 try:
     # Check if Firebase app is already initialized
     if not firebase_admin._apps:
-        # Try the newer service account key first
-        try:
-            cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-daa665d59c.json")
-            firebase_admin.initialize_app(cred, {
-                'storageBucket': 'closingtime-e1fe0.appspot.com'
-            })
-            FIREBASE_ENABLED = True
-            print("✅ Firebase Admin SDK initialized successfully with newer key")
-        except Exception as e1:
-            print(f"⚠️  Failed to initialize with newer key: {e1}")
-            # Try the older service account key as fallback
+        # Try to get Firebase config from environment variables first
+        firebase_config = os.environ.get('FIREBASE_CONFIG')
+        if firebase_config:
             try:
-                cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
+                import json
+                config_dict = json.loads(firebase_config)
+                cred = credentials.Certificate(config_dict)
                 firebase_admin.initialize_app(cred, {
                     'storageBucket': 'closingtime-e1fe0.appspot.com'
                 })
                 FIREBASE_ENABLED = True
-                print("✅ Firebase Admin SDK initialized successfully with fallback key")
-            except Exception as e2:
-                print(f"⚠️  Failed to initialize with fallback key: {e2}")
-                raise e2
+                print("✅ Firebase Admin SDK initialized successfully with environment config")
+            except Exception as e:
+                print(f"⚠️  Failed to initialize with environment config: {e}")
+        
+        # If environment config failed or not available, try local files
+        if not FIREBASE_ENABLED:
+            # Try the newer service account key first
+            try:
+                cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-daa665d59c.json")
+                firebase_admin.initialize_app(cred, {
+                    'storageBucket': 'closingtime-e1fe0.appspot.com'
+                })
+                FIREBASE_ENABLED = True
+                print("✅ Firebase Admin SDK initialized successfully with newer key")
+            except Exception as e1:
+                print(f"⚠️  Failed to initialize with newer key: {e1}")
+                # Try the older service account key as fallback
+                try:
+                    cred = credentials.Certificate("closingtime-e1fe0-firebase-adminsdk-1zdrb-228c74a754.json")
+                    firebase_admin.initialize_app(cred, {
+                        'storageBucket': 'closingtime-e1fe0.appspot.com'
+                    })
+                    FIREBASE_ENABLED = True
+                    print("✅ Firebase Admin SDK initialized successfully with fallback key")
+                except Exception as e2:
+                    print(f"⚠️  Failed to initialize with fallback key: {e2}")
+                    print("❌ Firebase initialization failed - photo uploads will be disabled")
+                    FIREBASE_ENABLED = False
     else:
         FIREBASE_ENABLED = True
         print("✅ Firebase Admin SDK already initialized")
 except Exception as e:
     FIREBASE_ENABLED = False
-    print(f"⚠️  Firebase initialization error: {e}")
-    print("💡 Notifications will be disabled. Please check Firebase service account key.")
+    print(f"❌ Firebase initialization failed: {e}")
+    print("💡 Photo uploads will be disabled. Please check Firebase service account key.")
     # Continue without Firebase if initialization fails
 
 app = Flask(__name__)
