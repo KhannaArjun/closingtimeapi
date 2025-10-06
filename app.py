@@ -468,11 +468,18 @@ def add_food():
     volunteer_ids = list()
 
     # Find nearby volunteers based on their serving distance
+    print(f"🔍 Total volunteers in database: {len(volunteers_obj_list)}")
+    print(f"📍 Food pickup location: ({input['pick_up_lat']}, {input['pick_up_lng']})")
+    
     for item in volunteers_obj_list:
         miles = dist(float(input['pick_up_lat']), float(input['pick_up_lng']), float(item['lat']), float(item['lng']))
+        print(f"👤 Volunteer {item.get('name', 'Unknown')}: Distance={miles:.2f} miles, Serving distance={item.get('serving_distance', 'N/A')} miles")
         # Check if the food donation is within volunteer's serving distance
         if miles <= float(item['serving_distance']):
             volunteer_ids.append(str(ObjectId(item['_id'])))
+            print(f"✅ Volunteer {item.get('name', 'Unknown')} is within range!")
+
+    print(f"📢 Found {len(volunteer_ids)} volunteers within range")
 
     # Get volunteer firebase tokens and send notifications
     user_firebase_token_col = getCollectionName("user_firebase_token")
@@ -482,11 +489,14 @@ def add_food():
 
     for item in volunteers_firebase_tokens:
         tokens.append(item['firebase_token'])
+    
+    print(f"🔔 Found {len(tokens)} firebase tokens for notifications")
 
     # Send push notifications to nearby volunteers
     send_notifications_to_volunteers(tokens, input['food_name'])
     
     # Send email notifications to nearby volunteers
+    print(f"📧 Sending email notifications to {len(volunteer_ids)} volunteers")
     send_volunteer_email_notifications(volunteer_ids, input)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
@@ -1800,12 +1810,19 @@ def qr_donate_food():
         volunteers_obj = volunteer_registration_col.find({})
         volunteers_obj_list = list(volunteers_obj)
         
+        print(f"🔍 QR Donation - Total volunteers in database: {len(volunteers_obj_list)}")
+        print(f"📍 QR Donation - Food pickup location: ({pick_up_lat}, {pick_up_lng})")
+        
         nearby_volunteer_ids = []
         for item in volunteers_obj_list:
             miles = dist(float(pick_up_lat), float(pick_up_lng), float(item['lat']), float(item['lng']))
+            print(f"👤 QR - Volunteer {item.get('name', 'Unknown')}: Distance={miles:.2f} miles, Serving distance={item.get('serving_distance', 'N/A')} miles")
             # Check if the food donation is within volunteer's serving distance
             if miles <= float(item['serving_distance']):
                 nearby_volunteer_ids.append(str(ObjectId(item['_id'])))
+                print(f"✅ QR - Volunteer {item.get('name', 'Unknown')} is within range!")
+        
+        print(f"📢 QR Donation - Found {len(nearby_volunteer_ids)} volunteers within range")
         
         # Get volunteer tokens and send notifications
         if nearby_volunteer_ids:
@@ -1813,10 +1830,14 @@ def qr_donate_food():
             volunteers_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": nearby_volunteer_ids}})
             
             tokens = [item['firebase_token'] for item in volunteers_firebase_tokens]
+            print(f"🔔 QR - Found {len(tokens)} firebase tokens for notifications")
             send_notifications_to_volunteers(tokens, food_name)
             
             # Send email notifications to nearby volunteers
+            print(f"📧 QR - Sending email notifications to {len(nearby_volunteer_ids)} volunteers")
             send_volunteer_email_notifications(nearby_volunteer_ids, food_donation)
+        else:
+            print(f"⚠️ QR Donation - No volunteers found within serving distance!")
         
         response_data = {
             'food_id': str(food_id),
