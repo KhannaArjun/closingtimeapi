@@ -1015,17 +1015,34 @@ def getAvailableFoodListForVolunteer():
 def getFoodItemDetails():
     input = request.get_json()
     donor_registration_col = getCollectionName('donor_registration')
+    business_registration_col = getCollectionName(constants.Utils.qr_business_collection)
 
-    # In the new flow, volunteers go directly to donors (no recipient in between)
-    donor_obj = donor_registration_col.find_one({"_id": ObjectId(input['donor_user_id'])})
-
+    donor_user_id = input['donor_user_id']
+    
+    # Try to find donor - could be in donor_registration (ObjectId) or qr_business_registration (UUID)
+    donor_obj = None
+    
+    # First, try as MongoDB ObjectId (for app-registered donors)
+    try:
+        if ObjectId.is_valid(donor_user_id):
+            donor_obj = donor_registration_col.find_one({"_id": ObjectId(donor_user_id)})
+            print(f"✅ Found donor in donor_registration collection")
+    except Exception as e:
+        print(f"⚠️ Not a valid ObjectId: {e}")
+    
+    # If not found, try as business_id (UUID for QR-registered donors)
+    if donor_obj is None:
+        donor_obj = business_registration_col.find_one({"business_id": donor_user_id})
+        if donor_obj:
+            print(f"✅ Found donor in QR business_registration collection")
+    
     final_obj = dict()
     if donor_obj is not None:
         # Return donor details for volunteer to pickup food
         final_obj.update({
-            "donor_name": donor_obj['name'], 
-            "donor_business_name": donor_obj['business_name'],
-            "donor_contact_number": donor_obj['contact_number'],
+            "donor_name": donor_obj.get('name', donor_obj.get('business_name', 'Unknown')), 
+            "donor_business_name": donor_obj.get('business_name', ''),
+            "donor_contact_number": donor_obj.get('contact_number', donor_obj.get('phone', '')),
             "donor_address": donor_obj.get('address', donor_obj.get('street_name', '')),
             "donor_lat": donor_obj.get('lat', 0),
             "donor_lng": donor_obj.get('lng', 0)
@@ -1036,6 +1053,8 @@ def getFoodItemDetails():
             distance_in_miles = dist(float(input['volunteer_lat']), float(input['volunteer_lng']), 
                                    float(donor_obj.get('lat', 0)), float(donor_obj.get('lng', 0)))
             final_obj.update({"distance": '%.2f' % (distance_in_miles)})
+    else:
+        print(f"❌ Donor not found with ID: {donor_user_id}")
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_obj))
 
