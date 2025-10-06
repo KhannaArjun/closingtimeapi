@@ -41,6 +41,8 @@ from email.mime.image import MIMEImage
 from firebase_admin import storage
 import requests
 from utils.donation_page import get_donor_registration_email_template
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 file_handler = FileHandler('error_logs.txt')
 file_handler.setLevel(WARNING)
@@ -1268,6 +1270,30 @@ def dist(lat1, long1, lat2, long2):
     return miles
 
 
+def geocode_address(address):
+    """
+    Geocode an address string to get latitude and longitude
+    Returns tuple (lat, lng) or (None, None) if geocoding fails
+    """
+    try:
+        geolocator = Nominatim(user_agent="closingtime_app")
+        location = geolocator.geocode(address, timeout=10)
+        
+        if location:
+            print(f"✅ Geocoded '{address}' to ({location.latitude}, {location.longitude})")
+            return location.latitude, location.longitude
+        else:
+            print(f"⚠️ Could not geocode address: {address}")
+            return None, None
+            
+    except (GeocoderTimedOut, GeocoderServiceError) as e:
+        print(f"❌ Geocoding error for '{address}': {e}")
+        return None, None
+    except Exception as e:
+        print(f"❌ Unexpected geocoding error: {e}")
+        return None, None
+
+
 def _get_access_token():
     """Retrieve a valid access token that can be used to authorize requests.
 
@@ -1779,6 +1805,24 @@ def qr_donate_food():
         
         if not business_info:
             return flask.jsonify(api_response.apiResponse("Business not found", False, {})), 404
+        
+        # Validate and correct coordinates if needed
+        # Check if coordinates match the address by geocoding
+        corrected_lat, corrected_lng = geocode_address(pick_up_address)
+        
+        if corrected_lat and corrected_lng:
+            # Calculate distance between provided coordinates and geocoded coordinates
+            distance_diff = dist(float(pick_up_lat), float(pick_up_lng), corrected_lat, corrected_lng)
+            
+            if distance_diff > 50:  # If more than 50 miles difference, use geocoded coordinates
+                print(f"⚠️ Coordinate mismatch detected! Frontend sent ({pick_up_lat}, {pick_up_lng}) but address geocodes to ({corrected_lat}, {corrected_lng}). Distance: {distance_diff:.2f} miles")
+                print(f"✅ Using geocoded coordinates instead")
+                pick_up_lat = corrected_lat
+                pick_up_lng = corrected_lng
+            else:
+                print(f"✅ Coordinates match address (difference: {distance_diff:.2f} miles)")
+        else:
+            print(f"⚠️ Could not geocode address, using provided coordinates")
         
         # Create food donation data
         food_donation = {
