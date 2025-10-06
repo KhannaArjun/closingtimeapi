@@ -457,46 +457,37 @@ def update_profile():
 def add_food():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
-    recipient_registration_col = getCollectionName('recipient_registration')
+    volunteer_registration_col = getCollectionName('volunteer_registration')
 
     food_id = add_food_col.insert_one(input)
 
-    recipients_obj = recipient_registration_col.find({})
+    volunteers_obj = volunteer_registration_col.find({})
 
-    recipients_obj_list = list(recipients_obj)
+    volunteers_obj_list = list(volunteers_obj)
 
-    ids = list()
-    # food_donations_nearby_recipients_obj_list = list()
+    volunteer_ids = list()
 
-    for item in recipients_obj_list:
+    # Find nearby volunteers based on their serving distance
+    for item in volunteers_obj_list:
         miles = dist(float(input['pick_up_lat']), float(input['pick_up_lng']), float(item['lat']), float(item['lng']))
-        # print(miles)
-        if miles < constants.Utils.miles:
-            # print(item)
-            ids.append(str(ObjectId(item['_id'])))
-            # food_donations_nearby_recipients_obj = {
-            #     "recipient_id" : str(ObjectId(item['_id'])),
-            #     "food_id": [food_id]
-            # }
-            #
-            # food_donations_nearby_recipients_obj_list.append(food_donations_nearby_recipients_obj)
+        # Check if the food donation is within volunteer's serving distance
+        if miles <= float(item['serving_distance']):
+            volunteer_ids.append(str(ObjectId(item['_id'])))
 
-    # print(ids)
-
-    # food_donations_nearby_recipients_col = getCollectionName("food_donations_nearby_recipients")
-
+    # Get volunteer firebase tokens and send notifications
     user_firebase_token_col = getCollectionName("user_firebase_token")
-    recipients_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": ids}})
+    volunteers_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": volunteer_ids}})
 
     tokens = list()
 
-    for item in recipients_firebase_tokens:
-        # print(item)
-        #
-        # print(item['firebase_token'])
+    for item in volunteers_firebase_tokens:
         tokens.append(item['firebase_token'])
 
-    send_notifications_to_recipients(tokens, input['food_name'], input['quantity'])
+    # Send push notifications to nearby volunteers
+    send_notifications_to_volunteers(tokens, input['food_name'])
+    
+    # Send email notifications to nearby volunteers
+    send_volunteer_email_notifications(volunteer_ids, input)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.inserted, False, {}))
 
@@ -979,9 +970,9 @@ def getAvailableFoodListForVolunteer():
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
 
+    # Get all available food for volunteers (available, waiting_for_volunteer, or pickup_scheduled)
     waiting_for_volunteer_foods = add_food_col.find({
-        'isFoodAccepted': {"$in": [input['isFoodAccepted']]},
-        "status": {"$in": [constants.Utils.waiting_for_volunteer, constants.Utils.pickeup_schedule]}
+        "status": {"$in": [constants.Utils.available, constants.Utils.waiting_for_volunteer, constants.Utils.pickeup_schedule]}
     })
 
     present_date = get_today_date()
@@ -991,18 +982,12 @@ def getAvailableFoodListForVolunteer():
     foodList = []
 
     if len(waiting_for_volunteer_food_list):
-        accepted_food_col = getCollectionName("accept_food")
-        # recipient_registration_col = getCollectionName("recipient_registration")
-
         for obj in waiting_for_volunteer_food_list:
-            # obj = dict(x)
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
             if pick_up_date >= present_date:
-                # obj.update({"status": constants.Utils.expired})
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
-                accepted_food_obj = accepted_food_col.find_one({"food_item_id": obj['id']})
-                obj.update({"recipient_user_id": accepted_food_obj["recipient_user_id"]})
+                # Calculate distance from volunteer to food pickup location
                 miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
                 if miles <= float(input['serving_distance']):
                     obj.update({"distance": '%.2f' % (miles)})
@@ -1014,30 +999,28 @@ def getAvailableFoodListForVolunteer():
 @app.route('/volunteer/getFoodItemDetails', methods=['POST'])
 def getFoodItemDetails():
     input = request.get_json()
-    recipient_registration_col = getCollectionName('recipient_registration')
     donor_registration_col = getCollectionName('donor_registration')
 
-    recipient_obj = recipient_registration_col.find_one({"_id": ObjectId(input['recipient_user_id'])})
+    # In the new flow, volunteers go directly to donors (no recipient in between)
     donor_obj = donor_registration_col.find_one({"_id": ObjectId(input['donor_user_id'])})
 
     final_obj = dict()
-    if recipient_obj is not None:
-        final_obj.update(
-            {"recipient_name": recipient_obj['name'], "recipient_business_name": recipient_obj['business_name'],
-             "recipient_contact_number": recipient_obj['contact_number'], "code": recipient_obj['code'],
-             "recipient_address": recipient_obj['address'],
-             "recipient_lat": recipient_obj['lat'], "recipient_lng": recipient_obj['lng']})
-
-        if donor_obj is not None:
-            distance_in_miles = dist(float(recipient_obj['lat']), float(recipient_obj['lng']), float(donor_obj['lat']),
-                                     float(donor_obj['lng']))
-            final_obj.update(
-                {"donor_name": donor_obj['name'], "donor_business_name": donor_obj['business_name'],
-                 "donor_contact_number": donor_obj['contact_number'],
-                 "donor_address": donor_obj['address'],
-                 "donor_lat": donor_obj['lat'], "donor_lng": donor_obj['lng'], "distance": '%.2f' % (distance_in_miles)
-                 }
-            )
+    if donor_obj is not None:
+        # Return donor details for volunteer to pickup food
+        final_obj.update({
+            "donor_name": donor_obj['name'], 
+            "donor_business_name": donor_obj['business_name'],
+            "donor_contact_number": donor_obj['contact_number'],
+            "donor_address": donor_obj.get('address', donor_obj.get('street_name', '')),
+            "donor_lat": donor_obj.get('lat', 0),
+            "donor_lng": donor_obj.get('lng', 0)
+        })
+        
+        # Calculate distance from volunteer to donor if volunteer location is provided
+        if 'volunteer_lat' in input and 'volunteer_lng' in input:
+            distance_in_miles = dist(float(input['volunteer_lat']), float(input['volunteer_lng']), 
+                                   float(donor_obj.get('lat', 0)), float(donor_obj.get('lng', 0)))
+            final_obj.update({"distance": '%.2f' % (distance_in_miles)})
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_obj))
 
@@ -1047,20 +1030,73 @@ def collect_food():
     input = request.get_json()
     collect_food_col = getCollectionName('collect_food')
     add_food_col = getCollectionName('add_food')
+    user_firebase_token_col = getCollectionName('user_firebase_token')
 
     add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_item_id"])})
 
     if add_food_obj is not None:
 
-        if add_food_obj['status'] == constants.Utils.waiting_for_volunteer:
+        # Volunteer can collect food that is available or waiting for volunteer
+        if add_food_obj['status'] in [constants.Utils.available, constants.Utils.waiting_for_volunteer]:
 
             id = collect_food_col.insert_one(input).inserted_id
             obj = add_food_col.update_one({'_id': ObjectId(input['food_item_id'])}, {
                 '$set': {'status': constants.Utils.pickeup_schedule}}, upsert=False)
+            
+            # Notify donor that volunteer has accepted the pickup
+            donor_firebase_obj = user_firebase_token_col.find_one({"user_id": add_food_obj["user_id"]})
+            if donor_firebase_obj is not None and donor_firebase_obj.get('firebase_token'):
+                send_notification_to_donor(donor_firebase_obj['firebase_token'], add_food_obj.get('business_name', 'Business'))
         else:
             return flask.jsonify(api_response.apiResponse(constants.Utils.already_assigned, False, {}))
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
+@app.route('/volunteer/mark_delivered', methods=['POST'])
+def volunteer_mark_delivered():
+    """Endpoint for volunteer to mark food as delivered to shelter"""
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+    user_firebase_token_col = getCollectionName('user_firebase_token')
+
+    add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_item_id"])})
+
+    if add_food_obj is not None:
+        # Update status to delivered
+        add_food_col.update_one({
+            '_id': ObjectId(input['food_item_id'])
+        }, {
+            '$set': {
+                'status': constants.Utils.delivered,
+                'delivered_at': datetime.now().isoformat()
+            }
+        }, upsert=False)
+        
+        # Notify donor that food has been delivered
+        donor_firebase_obj = user_firebase_token_col.find_one({"user_id": add_food_obj["user_id"]})
+        if donor_firebase_obj is not None and donor_firebase_obj.get('firebase_token'):
+            try:
+                notification = messaging.Notification(
+                    title="Food Delivered!",
+                    body=f"Your donation has been delivered to a shelter. Thank you for your contribution!"
+                )
+                message = messaging.Message(
+                    notification=notification,
+                    token=donor_firebase_obj['firebase_token']
+                )
+                messaging.send(message)
+                print(f"✅ Delivered notification sent to donor")
+            except Exception as e:
+                print(f"❌ Failed to send delivered notification to donor: {e}")
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {
+            'message': 'Food marked as delivered successfully'
+        }))
+    else:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {
+            'message': 'Food item not found'
+        }))
 
 
 @app.route('/volunteer/getAllFoodsByVolunteer', methods=['POST'])
@@ -1087,13 +1123,11 @@ def getAllFoodsByVolunteer():
     if len(food_list):
         for obj in food_list:
             pick_up_date = datetime.strptime(obj['pick_up_date'], "%Y-%m-%d").date()
-            # or obj['status'] == constants.Utils.delivered
-            if pick_up_date < present_date:
+            # Show foods that are still active (not yet delivered)
+            if pick_up_date >= present_date:
                 obj.update({'id': str(obj['_id'])})
                 del obj['_id']
-                collect_food_col_objct = collect_food_col.find_one(
-                    {"volunteer_user_id": str(input['user_id']), "food_item_id": str(obj['id'])})
-                obj.update({"recipient_user_id": collect_food_col_objct['recipient_user_id']})
+                # Calculate distance from volunteer to food pickup location
                 miles = dist(input['volunteer_lat'], input['volunteer_lng'], obj['pick_up_lat'], obj['pick_up_lng'])
                 obj.update({"distance": '%.2f' % (miles)})
                 final_food_list.append(obj)
@@ -1761,27 +1795,28 @@ def qr_donate_food():
         add_food_col = getCollectionName('add_food')
         food_id = add_food_col.insert_one(food_donation).inserted_id
         
-        # Find nearby recipients and send notifications
-        recipient_registration_col = getCollectionName('recipient_registration')
-        recipients_obj = recipient_registration_col.find({})
-        recipients_obj_list = list(recipients_obj)
+        # Find nearby volunteers and send notifications
+        volunteer_registration_col = getCollectionName('volunteer_registration')
+        volunteers_obj = volunteer_registration_col.find({})
+        volunteers_obj_list = list(volunteers_obj)
         
-        nearby_recipient_ids = []
-        for item in recipients_obj_list:
+        nearby_volunteer_ids = []
+        for item in volunteers_obj_list:
             miles = dist(float(pick_up_lat), float(pick_up_lng), float(item['lat']), float(item['lng']))
-            if miles < constants.Utils.miles:
-                nearby_recipient_ids.append(str(ObjectId(item['_id'])))
+            # Check if the food donation is within volunteer's serving distance
+            if miles <= float(item['serving_distance']):
+                nearby_volunteer_ids.append(str(ObjectId(item['_id'])))
         
-        # Get recipient tokens and send notifications
-        if nearby_recipient_ids:
+        # Get volunteer tokens and send notifications
+        if nearby_volunteer_ids:
             user_firebase_token_col = getCollectionName("user_firebase_token")
-            recipients_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": nearby_recipient_ids}})
+            volunteers_firebase_tokens = user_firebase_token_col.find({"user_id": {"$in": nearby_volunteer_ids}})
             
-            tokens = [item['firebase_token'] for item in recipients_firebase_tokens]
-            send_notifications_to_recipients(tokens, food_name, f"New food donation available")
-        
-        # Note: QR code generation and email to donor removed
-        # Volunteers will be notified directly when recipients accept the food
+            tokens = [item['firebase_token'] for item in volunteers_firebase_tokens]
+            send_notifications_to_volunteers(tokens, food_name)
+            
+            # Send email notifications to nearby volunteers
+            send_volunteer_email_notifications(nearby_volunteer_ids, food_donation)
         
         response_data = {
             'food_id': str(food_id),
@@ -1791,8 +1826,8 @@ def qr_donate_food():
             'pickup_date': pickup_date,
             'pickup_time': pickup_time,
             'photo_url': photo_url,
-            'nearby_recipients': len(nearby_recipient_ids),
-            'message': 'Food donation posted successfully! Nearby recipients have been notified.'
+            'nearby_volunteers': len(nearby_volunteer_ids),
+            'message': 'Food donation posted successfully! Nearby volunteers have been notified.'
         }
         
         return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, response_data))
