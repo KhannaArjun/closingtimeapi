@@ -470,10 +470,13 @@ def add_food():
     # Find nearby volunteers based on their serving distance
     print(f"🔍 Total volunteers in database: {len(volunteers_obj_list)}")
     print(f"📍 Food pickup location: ({input['pick_up_lat']}, {input['pick_up_lng']})")
+    print(f"🏢 Food pickup address: {input.get('pick_up_address', input.get('address', 'No address'))}")
     
     for item in volunteers_obj_list:
         miles = dist(float(input['pick_up_lat']), float(input['pick_up_lng']), float(item['lat']), float(item['lng']))
+        volunteer_address = item.get('address', 'No address')
         print(f"👤 Volunteer {item.get('name', 'Unknown')}: Distance={miles:.2f} miles, Serving distance={item.get('serving_distance', 'N/A')} miles")
+        print(f"   📍 Volunteer location: ({item.get('lat', 'N/A')}, {item.get('lng', 'N/A')}) - Address: {volunteer_address}")
         # Check if the food donation is within volunteer's serving distance
         if miles <= float(item['serving_distance']):
             volunteer_ids.append(str(ObjectId(item['_id'])))
@@ -1812,11 +1815,14 @@ def qr_donate_food():
         
         print(f"🔍 QR Donation - Total volunteers in database: {len(volunteers_obj_list)}")
         print(f"📍 QR Donation - Food pickup location: ({pick_up_lat}, {pick_up_lng})")
+        print(f"🏢 QR Donation - Food pickup address: {pick_up_address}")
         
         nearby_volunteer_ids = []
         for item in volunteers_obj_list:
             miles = dist(float(pick_up_lat), float(pick_up_lng), float(item['lat']), float(item['lng']))
+            volunteer_address = item.get('address', 'No address')
             print(f"👤 QR - Volunteer {item.get('name', 'Unknown')}: Distance={miles:.2f} miles, Serving distance={item.get('serving_distance', 'N/A')} miles")
+            print(f"   📍 Volunteer location: ({item.get('lat', 'N/A')}, {item.get('lng', 'N/A')}) - Address: {volunteer_address}")
             # Check if the food donation is within volunteer's serving distance
             if miles <= float(item['serving_distance']):
                 nearby_volunteer_ids.append(str(ObjectId(item['_id'])))
