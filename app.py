@@ -1780,10 +1780,12 @@ def get_all_users_list():
 
 
 @app.route('/admin/get_all_donors', methods=['GET'])
+@require_admin_token
 def get_all_donors():
     """
     Get all donors with their registration details
     Returns list of all donors without password and _id fields
+    Requires admin authentication token
     """
     try:
         donor_reg = getCollectionName('donor_registration')
