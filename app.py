@@ -275,6 +275,97 @@ def login():
         return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
 
 
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    """
+    Simple admin login endpoint for internal use
+    Expected payload: {"username": "admin", "password": "admin"}
+    """
+    try:
+        input_data = request.get_json()
+        
+        if not input_data:
+            return flask.jsonify(api_response.apiResponse("Invalid request format", True, {}))
+        
+        username = input_data.get('username', '')
+        password = input_data.get('password', '')
+        
+        # Simple hardcoded admin credentials for internal use
+        if username == 'admin' and password == 'admin':
+            # Generate a simple session token (for demo purposes)
+            session_token = secrets.token_hex(32)
+            
+            admin_data = {
+                'username': 'admin',
+                'role': 'admin',
+                'session_token': session_token,
+                'login_time': datetime.now(pytz.UTC).isoformat()
+            }
+            
+            return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, admin_data))
+        else:
+            return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, True, {}))
+    
+    except Exception as e:
+        print(f"Admin login error: {str(e)}")
+        return flask.jsonify(api_response.apiResponse("Login failed", True, {}))
+
+
+def require_admin_token(f):
+    """
+    Decorator to require admin authentication for protected endpoints
+    Expects 'Authorization' header with format: 'Bearer <token>'
+    """
+    from functools import wraps
+    
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            auth_header = request.headers.get('Authorization', '')
+            
+            if not auth_header.startswith('Bearer '):
+                return flask.jsonify(api_response.apiResponse("Missing or invalid authorization header", True, {}))
+            
+            token = auth_header.replace('Bearer ', '')
+            
+            # For this simple implementation, we just check if token exists and is not empty
+            # In a production environment, you'd want to validate the actual token
+            if not token or len(token) < 32:
+                return flask.jsonify(api_response.apiResponse("Invalid admin token", True, {}))
+            
+            return f(*args, **kwargs)
+        
+        except Exception as e:
+            print(f"Admin auth error: {str(e)}")
+            return flask.jsonify(api_response.apiResponse("Authentication failed", True, {}))
+    
+    return decorated_function
+
+
+@app.route('/admin/test', methods=['GET'])
+@require_admin_token
+def admin_test():
+    """
+    Test endpoint to verify admin authentication is working
+    Requires admin token in Authorization header
+    """
+    return flask.jsonify(api_response.apiResponse("Admin access granted", False, {
+        'message': 'This is a protected admin endpoint',
+        'timestamp': datetime.now(pytz.UTC).isoformat()
+    }))
+
+
+@app.route('/admin/health', methods=['GET'])
+def admin_health():
+    """
+    Admin health check endpoint - no authentication required
+    """
+    return flask.jsonify(api_response.apiResponse("Admin API is running", False, {
+        'status': 'healthy',
+        'timestamp': datetime.now(pytz.UTC).isoformat()
+    }))
+
+
 @app.route('/isUserExists', methods=['POST'])
 def isUserExists():
     input = request.get_json()
