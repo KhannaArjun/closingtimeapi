@@ -1779,6 +1779,35 @@ def get_all_users_list():
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
 
 
+@app.route('/admin/get_all_donors', methods=['GET'])
+def get_all_donors():
+    """
+    Get all donors with their registration details
+    Returns list of all donors without password and _id fields
+    """
+    try:
+        donor_reg = getCollectionName('donor_registration')
+        donor_list = list(donor_reg.find({}, {'_id': False, 'password': False}))
+        
+        # Add user_id field for each donor
+        for donor in donor_list:
+            # Find the original record to get _id
+            original = donor_reg.find_one({'email': donor.get('email')})
+            if original:
+                donor['user_id'] = str(original['_id'])
+        
+        data = {
+            'total_count': len(donor_list),
+            'donors': donor_list
+        }
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, data))
+    
+    except Exception as e:
+        print(f"Error fetching all donors: {str(e)}")
+        return flask.jsonify(api_response.apiResponse("Failed to fetch donors", True, {}))
+
+
 @app.route('/admin/get_all_users_count', methods=['GET'])
 def get_all_users_count():
     # input = request.get_json()
