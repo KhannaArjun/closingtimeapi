@@ -149,13 +149,61 @@ def mongodb_health_check():
         print(f"❌ MongoDB Health Check - {datetime.now()}: Connection failed - {e}")
         return False
 
+def comprehensive_health_check():
+    """Perform comprehensive health check of all services (runs every 2 hours)"""
+    try:
+        print(f"🔍 Comprehensive Health Check - {datetime.now()}: Starting...")
+        
+        # Ping MongoDB
+        client.admin.command('ping')
+        server_info = client.server_info()
+        db_stats = db.command("dbStats")
+        
+        health_status = {
+            "mongodb": {
+                "connected": True,
+                "server_version": server_info.get('version', 'unknown'),
+                "database_name": db.name,
+                "collections": db_stats.get('collections', 0),
+                "data_size": db_stats.get('dataSize', 0)
+            },
+            "firebase": {
+                "enabled": FIREBASE_ENABLED
+            },
+            "scheduler": {
+                "running": scheduler.running,
+                "jobs_count": len(scheduler.get_jobs())
+            }
+        }
+        
+        print(f"✅ Comprehensive Health Check - {datetime.now()}: All systems operational")
+        print(f"   MongoDB: {health_status['mongodb']['connected']}")
+        print(f"   Firebase: {health_status['firebase']['enabled']}")
+        print(f"   Scheduler: {health_status['scheduler']['running']} ({health_status['scheduler']['jobs_count']} jobs)")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Comprehensive Health Check - {datetime.now()}: Check failed - {e}")
+        return False
+
 # Initialize scheduler for health checks
 scheduler = BackgroundScheduler()
+
+# MongoDB health check every 3 hours
 scheduler.add_job(
     func=mongodb_health_check,
     trigger=IntervalTrigger(hours=3),
     id='mongodb_health_check',
     name='MongoDB Health Check every 3 hours',
+    replace_existing=True
+)
+
+# Comprehensive health check every 2 hours
+scheduler.add_job(
+    func=comprehensive_health_check,
+    trigger=IntervalTrigger(hours=2),
+    id='comprehensive_health_check',
+    name='Comprehensive Health Check every 2 hours',
     replace_existing=True
 )
 
