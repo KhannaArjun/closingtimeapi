@@ -323,11 +323,12 @@ def login():
         return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, False, {}))
 
 
-@app.route('/admin/login', methods=['POST'])
-def admin_login():
+@app.route('/admin/register', methods=['POST'])
+def admin_register():
     """
-    Simple admin login endpoint for internal use
-    Expected payload: {"username": "admin", "password": "admin"}
+    Register a new admin user
+    Expected payload: {"name": "Admin Name", "email": "admin@example.com", "password": "password"}
+    Note: In production, you might want to protect this endpoint or disable after initial setup
     """
     try:
         input_data = request.get_json()
@@ -335,24 +336,107 @@ def admin_login():
         if not input_data:
             return flask.jsonify(api_response.apiResponse("Invalid request format", True, {}))
         
-        username = input_data.get('username', '')
+        # Validate required fields
+        required_fields = ['name', 'email', 'password']
+        for field in required_fields:
+            if field not in input_data:
+                return flask.jsonify(api_response.apiResponse(f"Missing required field: {field}", True, {}))
+        
+        admin_reg = getCollectionName('admin_registration')
+        
+        # Check if admin already exists
+        existing_admin = admin_reg.find_one({'email': input_data['email']})
+        if existing_admin:
+            return flask.jsonify(api_response.apiResponse("Admin with this email already exists", True, {}))
+        
+        # Encode password (same pattern as donors)
+        pwd = input_data['password'].encode("utf-8")
+        encoded_password = base64.b64encode(pwd)
+        
+        # Prepare admin data
+        admin_data = {
+            'name': input_data['name'],
+            'email': input_data['email'],
+            'password': encoded_password,
+            'role': 'Admin',
+            'created_at': datetime.now(pytz.UTC).isoformat(),
+            'status': 'active'
+        }
+        
+        # Insert admin
+        obj = admin_reg.insert_one(admin_data).inserted_id
+        
+        # Prepare response (without password)
+        response_data = {
+            'user_id': str(obj),
+            'name': input_data['name'],
+            'email': input_data['email'],
+            'role': 'Admin'
+        }
+        
+        return flask.jsonify(api_response.apiResponse("Admin registered successfully", False, response_data))
+    
+    except Exception as e:
+        print(f"Admin registration error: {str(e)}")
+        return flask.jsonify(api_response.apiResponse(f"Registration failed: {str(e)}", True, {}))
+
+
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    """
+    Admin login endpoint - validates against database
+    Expected payload: {"email": "admin@example.com", "password": "password"}
+    """
+    try:
+        input_data = request.get_json()
+        
+        if not input_data:
+            return flask.jsonify(api_response.apiResponse("Invalid request format", True, {}))
+        
+        email = input_data.get('email', '')
         password = input_data.get('password', '')
         
-        # Simple hardcoded admin credentials for internal use
-        if username == 'admin' and password == 'admin':
-            # Generate a simple session token (for demo purposes)
-            session_token = secrets.token_hex(32)
-            
-            admin_data = {
-                'username': 'admin',
-                'role': 'admin',
-                'session_token': session_token,
-                'login_time': datetime.now(pytz.UTC).isoformat()
-            }
-            
-            return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, admin_data))
-        else:
+        if not email or not password:
+            return flask.jsonify(api_response.apiResponse("Email and password are required", True, {}))
+        
+        # Get admin from database
+        admin_reg = getCollectionName('admin_registration')
+        record = admin_reg.find_one({'email': email})
+        
+        if not record:
             return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, True, {}))
+        
+        # Decode and verify password (same pattern as donors)
+        pwd = base64.b64decode(record['password']).decode('utf-8')
+        
+        if pwd != password:
+            return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, True, {}))
+        
+        # Generate session token
+        session_token = secrets.token_hex(32)
+        
+        # Store session token in database
+        admin_sessions = getCollectionName('admin_sessions')
+        session_data = {
+            'admin_id': str(record['_id']),
+            'email': email,
+            'session_token': session_token,
+            'created_at': datetime.now(pytz.UTC).isoformat(),
+            'expires_at': (datetime.now(pytz.UTC) + timedelta(hours=24)).isoformat()
+        }
+        admin_sessions.insert_one(session_data)
+        
+        # Prepare response data
+        admin_data = {
+            'user_id': str(record['_id']),
+            'name': record['name'],
+            'email': record['email'],
+            'role': 'Admin',
+            'session_token': session_token,
+            'login_time': datetime.now(pytz.UTC).isoformat()
+        }
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, admin_data))
     
     except Exception as e:
         print(f"Admin login error: {str(e)}")
@@ -362,6 +446,7 @@ def admin_login():
 def require_admin_token(f):
     """
     Decorator to require admin authentication for protected endpoints
+    Validates token against database and checks expiration
     Expects 'Authorization' header with format: 'Bearer <token>'
     """
     from functools import wraps
@@ -376,10 +461,25 @@ def require_admin_token(f):
             
             token = auth_header.replace('Bearer ', '')
             
-            # For this simple implementation, we just check if token exists and is not empty
-            # In a production environment, you'd want to validate the actual token
-            if not token or len(token) < 32:
+            if not token:
                 return flask.jsonify(api_response.apiResponse("Invalid admin token", True, {}))
+            
+            # Validate token against database
+            admin_sessions = getCollectionName('admin_sessions')
+            session = admin_sessions.find_one({'session_token': token})
+            
+            if not session:
+                return flask.jsonify(api_response.apiResponse("Invalid or expired admin token", True, {}))
+            
+            # Check if token is expired
+            expires_at = datetime.fromisoformat(session['expires_at'])
+            if datetime.now(pytz.UTC) > expires_at:
+                # Delete expired session
+                admin_sessions.delete_one({'session_token': token})
+                return flask.jsonify(api_response.apiResponse("Session expired. Please login again", True, {}))
+            
+            # Token is valid, attach admin_id to request for use in endpoint
+            request.admin_id = session['admin_id']
             
             return f(*args, **kwargs)
         
@@ -388,6 +488,31 @@ def require_admin_token(f):
             return flask.jsonify(api_response.apiResponse("Authentication failed", True, {}))
     
     return decorated_function
+
+
+@app.route('/admin/logout', methods=['POST'])
+@require_admin_token
+def admin_logout():
+    """
+    Admin logout endpoint - removes session from database
+    Requires valid admin token in Authorization header
+    """
+    try:
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header.replace('Bearer ', '')
+        
+        # Delete session from database
+        admin_sessions = getCollectionName('admin_sessions')
+        result = admin_sessions.delete_one({'session_token': token})
+        
+        if result.deleted_count > 0:
+            return flask.jsonify(api_response.apiResponse("Logged out successfully", False, {}))
+        else:
+            return flask.jsonify(api_response.apiResponse("Session not found", True, {}))
+    
+    except Exception as e:
+        print(f"Admin logout error: {str(e)}")
+        return flask.jsonify(api_response.apiResponse("Logout failed", True, {}))
 
 
 @app.route('/admin/test', methods=['GET'])
