@@ -189,21 +189,21 @@ def comprehensive_health_check():
 # Initialize scheduler for health checks
 scheduler = BackgroundScheduler()
 
-# MongoDB health check every 3 hours
+# MongoDB health check every 20 minutes
 scheduler.add_job(
     func=mongodb_health_check,
-    trigger=IntervalTrigger(hours=3),
+    trigger=IntervalTrigger(minutes=20),
     id='mongodb_health_check',
-    name='MongoDB Health Check every 3 hours',
+    name='MongoDB Health Check every 20 minutes',
     replace_existing=True
 )
 
-# Comprehensive health check every 2 hours
+# Comprehensive health check every 20 minutes
 scheduler.add_job(
     func=comprehensive_health_check,
-    trigger=IntervalTrigger(hours=2),
+    trigger=IntervalTrigger(minutes=20),
     id='comprehensive_health_check',
-    name='Comprehensive Health Check every 2 hours',
+    name='Comprehensive Health Check every 20 minutes',
     replace_existing=True
 )
 
