@@ -1936,6 +1936,171 @@ def get_all_donors():
         return flask.jsonify(api_response.apiResponse("Failed to fetch donors", True, {}))
 
 
+@app.route('/admin/get_donor/<business_id>', methods=['GET'])
+@require_admin_token
+def get_donor(business_id):
+    """
+    Get single donor (QR business) by business_id
+    Requires admin authentication token
+    """
+    try:
+        qr_business_reg = getCollectionName(constants.Utils.qr_business_collection)
+        donor = qr_business_reg.find_one({'business_id': business_id}, {'_id': False})
+        
+        if not donor:
+            return flask.jsonify(api_response.apiResponse("Donor not found", True, {}))
+        
+        # Add user_id and role fields
+        donor['user_id'] = donor.get('business_id', '')
+        donor['role'] = 'Donor'
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, donor))
+    
+    except Exception as e:
+        print(f"Error fetching donor: {str(e)}")
+        return flask.jsonify(api_response.apiResponse("Failed to fetch donor", True, {}))
+
+
+@app.route('/admin/update_donor', methods=['PUT'])
+@require_admin_token
+def update_donor():
+    """
+    Update donor (QR business) information
+    Requires admin authentication token
+    """
+    try:
+        input_data = request.get_json()
+        
+        if not input_data or 'business_id' not in input_data:
+            return flask.jsonify(api_response.apiResponse("business_id is required", True, {}))
+        
+        business_id = input_data['business_id']
+        qr_business_reg = getCollectionName(constants.Utils.qr_business_collection)
+        
+        # Check if donor exists
+        existing_donor = qr_business_reg.find_one({'business_id': business_id})
+        if not existing_donor:
+            return flask.jsonify(api_response.apiResponse("Donor not found", True, {}))
+        
+        # Prepare update data (exclude business_id and _id)
+        update_data = {}
+        allowed_fields = ['business_name', 'email', 'contact_number', 'address', 'lat', 'lng', 'place_id', 'status']
+        
+        for field in allowed_fields:
+            if field in input_data:
+                update_data[field] = input_data[field]
+        
+        # Add updated timestamp
+        update_data['updated_at'] = datetime.now(pytz.UTC).isoformat()
+        
+        # Update the donor
+        result = qr_business_reg.update_one(
+            {'business_id': business_id},
+            {'$set': update_data}
+        )
+        
+        if result.modified_count > 0:
+            # Get updated donor
+            updated_donor = qr_business_reg.find_one({'business_id': business_id}, {'_id': False})
+            updated_donor['user_id'] = updated_donor.get('business_id', '')
+            updated_donor['role'] = 'Donor'
+            
+            return flask.jsonify(api_response.apiResponse("Donor updated successfully", False, updated_donor))
+        else:
+            return flask.jsonify(api_response.apiResponse("No changes made", True, {}))
+    
+    except Exception as e:
+        print(f"Error updating donor: {str(e)}")
+        return flask.jsonify(api_response.apiResponse("Failed to update donor", True, {}))
+
+
+@app.route('/admin/delete_donor', methods=['DELETE'])
+@require_admin_token
+def delete_donor():
+    """
+    Delete donor (QR business)
+    Requires admin authentication token
+    """
+    try:
+        input_data = request.get_json()
+        
+        if not input_data or 'business_id' not in input_data:
+            return flask.jsonify(api_response.apiResponse("business_id is required", True, {}))
+        
+        business_id = input_data['business_id']
+        qr_business_reg = getCollectionName(constants.Utils.qr_business_collection)
+        
+        # Check if donor exists
+        existing_donor = qr_business_reg.find_one({'business_id': business_id})
+        if not existing_donor:
+            return flask.jsonify(api_response.apiResponse("Donor not found", True, {}))
+        
+        # Delete the donor
+        result = qr_business_reg.delete_one({'business_id': business_id})
+        
+        if result.deleted_count > 0:
+            return flask.jsonify(api_response.apiResponse("Donor deleted successfully", False, {
+                'business_id': business_id,
+                'deleted_at': datetime.now(pytz.UTC).isoformat()
+            }))
+        else:
+            return flask.jsonify(api_response.apiResponse("Failed to delete donor", True, {}))
+    
+    except Exception as e:
+        print(f"Error deleting donor: {str(e)}")
+        return flask.jsonify(api_response.apiResponse("Failed to delete donor", True, {}))
+
+
+@app.route('/admin/toggle_donor_status', methods=['POST'])
+@require_admin_token
+def toggle_donor_status():
+    """
+    Toggle donor (QR business) status between active/inactive
+    Requires admin authentication token
+    """
+    try:
+        input_data = request.get_json()
+        
+        if not input_data or 'business_id' not in input_data:
+            return flask.jsonify(api_response.apiResponse("business_id is required", True, {}))
+        
+        business_id = input_data['business_id']
+        new_status = input_data.get('status', 'inactive')  # Default to inactive
+        
+        if new_status not in ['active', 'inactive']:
+            return flask.jsonify(api_response.apiResponse("Status must be 'active' or 'inactive'", True, {}))
+        
+        qr_business_reg = getCollectionName(constants.Utils.qr_business_collection)
+        
+        # Check if donor exists
+        existing_donor = qr_business_reg.find_one({'business_id': business_id})
+        if not existing_donor:
+            return flask.jsonify(api_response.apiResponse("Donor not found", True, {}))
+        
+        # Update status
+        result = qr_business_reg.update_one(
+            {'business_id': business_id},
+            {'$set': {
+                'status': new_status,
+                'updated_at': datetime.now(pytz.UTC).isoformat()
+            }}
+        )
+        
+        if result.modified_count > 0:
+            # Get updated donor
+            updated_donor = qr_business_reg.find_one({'business_id': business_id}, {'_id': False})
+            updated_donor['user_id'] = updated_donor.get('business_id', '')
+            updated_donor['role'] = 'Donor'
+            
+            return flask.jsonify(api_response.apiResponse(f"Donor status updated to {new_status}", False, updated_donor))
+        else:
+            return flask.jsonify(api_response.apiResponse("Failed to update donor status", True, {}))
+    
+    except Exception as e:
+        print(f"Error updating donor status: {str(e)}")
+        return flask.jsonify(api_response.apiResponse("Failed to update donor status", True, {}))
+
+
 @app.route('/admin/get_all_users_count', methods=['GET'])
 def get_all_users_count():
     # input = request.get_json()
