@@ -539,6 +539,40 @@ def admin_health():
     }))
 
 
+@app.route('/admin/scheduler_status', methods=['GET'])
+@require_admin_token
+def scheduler_status():
+    """
+    Get detailed scheduler status and job information
+    Requires admin authentication token
+    """
+    try:
+        jobs = scheduler.get_jobs()
+        job_details = []
+        
+        for job in jobs:
+            job_details.append({
+                'id': job.id,
+                'name': job.name,
+                'next_run_time': job.next_run_time.isoformat() if job.next_run_time else None,
+                'trigger': str(job.trigger),
+                'func_name': job.func.__name__ if hasattr(job.func, '__name__') else str(job.func)
+            })
+        
+        scheduler_info = {
+            'running': scheduler.running,
+            'shutdown': scheduler.shutdown,
+            'total_jobs': len(jobs),
+            'jobs': job_details
+        }
+        
+        return flask.jsonify(api_response.apiResponse("Scheduler status retrieved", False, scheduler_info))
+    
+    except Exception as e:
+        print(f"Scheduler status error: {str(e)}")
+        return flask.jsonify(api_response.apiResponse(f"Scheduler status error: {str(e)}", True, {}))
+
+
 @app.route('/isUserExists', methods=['POST'])
 def isUserExists():
     input = request.get_json()
