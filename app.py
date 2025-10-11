@@ -1908,20 +1908,21 @@ def get_all_users_list():
 @require_admin_token
 def get_all_donors():
     """
-    Get all donors with their registration details
-    Returns list of all donors without password and _id fields
+    Get all donors (QR businesses) with their registration details
+    Returns list of all QR business donors without _id fields
     Requires admin authentication token
     """
     try:
-        donor_reg = getCollectionName('donor_registration')
-        donor_list = list(donor_reg.find({}, {'_id': False, 'password': False}))
+        # Get QR businesses (these are the donors)
+        qr_business_reg = getCollectionName(constants.Utils.qr_business_collection)
+        donor_list = list(qr_business_reg.find({}, {'_id': False}))
         
-        # Add user_id field for each donor
+        # Add user_id field for each donor (using business_id)
         for donor in donor_list:
-            # Find the original record to get _id
-            original = donor_reg.find_one({'email': donor.get('email')})
-            if original:
-                donor['user_id'] = str(original['_id'])
+            # Use business_id as user_id for QR businesses
+            donor['user_id'] = donor.get('business_id', '')
+            # Add role field to match regular donors
+            donor['role'] = 'Donor'
         
         data = {
             'total_count': len(donor_list),
