@@ -327,7 +327,7 @@ def login():
 def admin_register():
     """
     Register a new admin user
-    Expected payload: {"name": "Admin Name", "email": "admin@example.com", "password": "password"}
+    Expected payload: {"name": "Admin Name", "username": "admin", "password": "password"}
     Note: In production, you might want to protect this endpoint or disable after initial setup
     """
     try:
@@ -337,7 +337,7 @@ def admin_register():
             return flask.jsonify(api_response.apiResponse("Invalid request format", True, {}))
         
         # Validate required fields
-        required_fields = ['name', 'email', 'password']
+        required_fields = ['name', 'username', 'password']
         for field in required_fields:
             if field not in input_data:
                 return flask.jsonify(api_response.apiResponse(f"Missing required field: {field}", True, {}))
@@ -345,9 +345,9 @@ def admin_register():
         admin_reg = getCollectionName('admin_registration')
         
         # Check if admin already exists
-        existing_admin = admin_reg.find_one({'email': input_data['email']})
+        existing_admin = admin_reg.find_one({'username': input_data['username']})
         if existing_admin:
-            return flask.jsonify(api_response.apiResponse("Admin with this email already exists", True, {}))
+            return flask.jsonify(api_response.apiResponse("Admin with this username already exists", True, {}))
         
         # Encode password (same pattern as donors)
         pwd = input_data['password'].encode("utf-8")
@@ -356,7 +356,7 @@ def admin_register():
         # Prepare admin data
         admin_data = {
             'name': input_data['name'],
-            'email': input_data['email'],
+            'username': input_data['username'],
             'password': encoded_password,
             'role': 'Admin',
             'created_at': datetime.now(pytz.UTC).isoformat(),
@@ -370,7 +370,7 @@ def admin_register():
         response_data = {
             'user_id': str(obj),
             'name': input_data['name'],
-            'email': input_data['email'],
+            'username': input_data['username'],
             'role': 'Admin'
         }
         
@@ -385,7 +385,7 @@ def admin_register():
 def admin_login():
     """
     Admin login endpoint - validates against database
-    Expected payload: {"email": "admin@example.com", "password": "password"}
+    Expected payload: {"username": "admin", "password": "password"}
     """
     try:
         input_data = request.get_json()
@@ -393,15 +393,15 @@ def admin_login():
         if not input_data:
             return flask.jsonify(api_response.apiResponse("Invalid request format", True, {}))
         
-        email = input_data.get('email', '')
+        username = input_data.get('username', '')
         password = input_data.get('password', '')
         
-        if not email or not password:
-            return flask.jsonify(api_response.apiResponse("Email and password are required", True, {}))
+        if not username or not password:
+            return flask.jsonify(api_response.apiResponse("Username and password are required", True, {}))
         
         # Get admin from database
         admin_reg = getCollectionName('admin_registration')
-        record = admin_reg.find_one({'email': email})
+        record = admin_reg.find_one({'username': username})
         
         if not record:
             return flask.jsonify(api_response.apiResponse(constants.Utils.invalid_cred, True, {}))
@@ -419,7 +419,7 @@ def admin_login():
         admin_sessions = getCollectionName('admin_sessions')
         session_data = {
             'admin_id': str(record['_id']),
-            'email': email,
+            'username': username,
             'session_token': session_token,
             'created_at': datetime.now(pytz.UTC).isoformat(),
             'expires_at': (datetime.now(pytz.UTC) + timedelta(hours=24)).isoformat()
@@ -430,7 +430,7 @@ def admin_login():
         admin_data = {
             'user_id': str(record['_id']),
             'name': record['name'],
-            'email': record['email'],
+            'username': record['username'],
             'role': 'Admin',
             'session_token': session_token,
             'login_time': datetime.now(pytz.UTC).isoformat()
