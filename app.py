@@ -150,7 +150,7 @@ def mongodb_health_check():
         return False
 
 def comprehensive_health_check():
-    """Perform comprehensive health check of all services (runs every 2 hours)"""
+    """Perform comprehensive health check of all services (runs every 20 minutes)"""
     try:
         print(f"🔍 Comprehensive Health Check - {datetime.now()}: Starting...")
         
@@ -158,6 +158,16 @@ def comprehensive_health_check():
         client.admin.command('ping')
         server_info = client.server_info()
         db_stats = db.command("dbStats")
+        
+        # Safely check scheduler status
+        scheduler_running = False
+        jobs_count = 0
+        try:
+            if 'scheduler' in globals():
+                scheduler_running = scheduler.running
+                jobs_count = len(scheduler.get_jobs())
+        except Exception as scheduler_err:
+            print(f"Scheduler check error: {scheduler_err}")
         
         health_status = {
             "mongodb": {
@@ -171,8 +181,8 @@ def comprehensive_health_check():
                 "enabled": FIREBASE_ENABLED
             },
             "scheduler": {
-                "running": scheduler.running,
-                "jobs_count": len(scheduler.get_jobs())
+                "running": scheduler_running,
+                "jobs_count": jobs_count
             }
         }
         
@@ -187,31 +197,46 @@ def comprehensive_health_check():
         return False
 
 # Initialize scheduler for health checks
+print("🔧 Initializing Background Scheduler...")
 scheduler = BackgroundScheduler()
 
-# MongoDB health check every 20 minutes
-scheduler.add_job(
-    func=mongodb_health_check,
-    trigger=IntervalTrigger(minutes=20),
-    id='mongodb_health_check',
-    name='MongoDB Health Check every 20 minutes',
-    replace_existing=True
-)
+try:
+    # MongoDB health check every 2 minutes (for testing)
+    print("📅 Adding MongoDB health check job (every 2 minutes for testing)...")
+    scheduler.add_job(
+        func=mongodb_health_check,
+        trigger=IntervalTrigger(minutes=2),
+        id='mongodb_health_check',
+        name='MongoDB Health Check every 2 minutes',
+        replace_existing=True
+    )
 
-# Comprehensive health check every 20 minutes
-scheduler.add_job(
-    func=comprehensive_health_check,
-    trigger=IntervalTrigger(minutes=20),
-    id='comprehensive_health_check',
-    name='Comprehensive Health Check every 20 minutes',
-    replace_existing=True
-)
+    # Comprehensive health check every 2 minutes (for testing)
+    print("📅 Adding Comprehensive health check job (every 2 minutes for testing)...")
+    scheduler.add_job(
+        func=comprehensive_health_check,
+        trigger=IntervalTrigger(minutes=2),
+        id='comprehensive_health_check',
+        name='Comprehensive Health Check every 2 minutes',
+        replace_existing=True
+    )
 
-# Start the scheduler
-scheduler.start()
+    # Start the scheduler
+    print("🚀 Starting Background Scheduler...")
+    scheduler.start()
+    print(f"✅ Scheduler started successfully! Jobs count: {len(scheduler.get_jobs())}")
+    
+    # Run initial health check immediately
+    print("🔍 Running initial health checks...")
+    mongodb_health_check()
+    comprehensive_health_check()
+    
+except Exception as scheduler_error:
+    print(f"❌ Scheduler initialization failed: {scheduler_error}")
+    print("⚠️  Health checks will not run automatically")
 
 # Shutdown scheduler when app exits
-atexit.register(lambda: scheduler.shutdown())
+atexit.register(lambda: scheduler.shutdown() if scheduler.running else None)
 
 # user_collection = pymongo.collection.Collection(db, 'user_collection')
 #
@@ -571,6 +596,37 @@ def scheduler_status():
     except Exception as e:
         print(f"Scheduler status error: {str(e)}")
         return flask.jsonify(api_response.apiResponse(f"Scheduler status error: {str(e)}", True, {}))
+
+
+@app.route('/admin/test_health_checks', methods=['POST'])
+@require_admin_token
+def test_health_checks():
+    """
+    Manually trigger health checks for testing
+    Requires admin authentication token
+    """
+    try:
+        print("🧪 Manual health check test triggered by admin...")
+        
+        # Run MongoDB health check
+        mongodb_result = mongodb_health_check()
+        
+        # Run comprehensive health check
+        comprehensive_result = comprehensive_health_check()
+        
+        test_results = {
+            'mongodb_health_check': mongodb_result,
+            'comprehensive_health_check': comprehensive_result,
+            'scheduler_running': scheduler.running if 'scheduler' in globals() else False,
+            'scheduler_jobs': len(scheduler.get_jobs()) if 'scheduler' in globals() else 0,
+            'test_time': datetime.now(pytz.UTC).isoformat()
+        }
+        
+        return flask.jsonify(api_response.apiResponse("Health checks completed", False, test_results))
+    
+    except Exception as e:
+        print(f"Manual health check test error: {str(e)}")
+        return flask.jsonify(api_response.apiResponse(f"Health check test failed: {str(e)}", True, {}))
 
 
 @app.route('/isUserExists', methods=['POST'])
