@@ -201,23 +201,23 @@ print("🔧 Initializing Background Scheduler...")
 scheduler = BackgroundScheduler()
 
 try:
-    # MongoDB health check every 2 minutes (for testing)
-    print("📅 Adding MongoDB health check job (every 2 minutes for testing)...")
+    # MongoDB health check every 3 hours
+    print("📅 Adding MongoDB health check job (every 3 hours)...")
     scheduler.add_job(
         func=mongodb_health_check,
-        trigger=IntervalTrigger(minutes=2),
+        trigger=IntervalTrigger(hours=3),
         id='mongodb_health_check',
-        name='MongoDB Health Check every 2 minutes',
+        name='MongoDB Health Check every 3 hours',
         replace_existing=True
     )
 
-    # Comprehensive health check every 2 minutes (for testing)
-    print("📅 Adding Comprehensive health check job (every 2 minutes for testing)...")
+    # Comprehensive health check every 3 hours
+    print("📅 Adding Comprehensive health check job (every 3 hours)...")
     scheduler.add_job(
         func=comprehensive_health_check,
-        trigger=IntervalTrigger(minutes=2),
+        trigger=IntervalTrigger(hours=3),
         id='comprehensive_health_check',
-        name='Comprehensive Health Check every 2 minutes',
+        name='Comprehensive Health Check every 3 hours',
         replace_existing=True
     )
 
