@@ -343,14 +343,17 @@ def get_food_donate_template(business_data, token):
 
             // Initialize form
             document.addEventListener('DOMContentLoaded', function() {{
-                // Set pickup date to current date
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('pickup-date').value = today;
+                // Set date range: tomorrow to one week from today
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
                 
-                // Set pickup time to current time
-                const now = new Date();
-                const timeString = now.toTimeString().slice(0, 5);
-                document.getElementById('pickup-time').value = timeString;
+                const oneWeekLater = new Date(today);
+                oneWeekLater.setDate(oneWeekLater.getDate() + 7);
+                
+                const dateInput = document.getElementById('pickup-date');
+                dateInput.min = tomorrow.toISOString().split('T')[0];
+                dateInput.max = oneWeekLater.toISOString().split('T')[0];
             }});
 
             function startCamera() {{
