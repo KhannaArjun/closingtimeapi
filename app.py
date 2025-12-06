@@ -2789,6 +2789,15 @@ def qr_donate_food():
             if not request.form.get(field):
                 return flask.jsonify(api_response.apiResponse(f"Missing required field: {field}", False, {})), 400
         
+        # Validate pickup date is not in the past
+        try:
+            pickup_date_obj = datetime.strptime(pickup_date, "%Y-%m-%d").date()
+            today = get_today_date()
+            if pickup_date_obj < today:
+                return flask.jsonify(api_response.apiResponse("Pickup date cannot be in the past. Please select today or a future date.", False, {})), 400
+        except ValueError:
+            return flask.jsonify(api_response.apiResponse("Invalid pickup date format. Please use YYYY-MM-DD format.", False, {})), 400
+        
         # Upload photo to Firebase Storage
         photo_url = upload_photo_to_firebase(photo_data, business_id, food_name)
         
@@ -3798,17 +3807,29 @@ def qr_scan_page():
 
         // Initialize form
         document.addEventListener('DOMContentLoaded', function() {{
-            // Set date range: tomorrow to one week from today
+            // Set date range: today to one week from today (disable previous dates)
             const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            const todayStr = today.toISOString().split('T')[0];
             
             const oneWeekLater = new Date(today);
             oneWeekLater.setDate(oneWeekLater.getDate() + 7);
             
             const dateInput = document.getElementById('pickup-date');
-            dateInput.min = tomorrow.toISOString().split('T')[0];
+            dateInput.min = todayStr;  // Set minimum to today (prevents previous dates)
             dateInput.max = oneWeekLater.toISOString().split('T')[0];
+            
+            // Additional validation to prevent past dates
+            dateInput.addEventListener('change', function() {{
+                const selectedDate = new Date(this.value);
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                selectedDate.setHours(0, 0, 0, 0);
+                
+                if (selectedDate < todayDate) {{
+                    alert('Cannot select a date in the past. Please select today or a future date.');
+                    this.value = todayStr;
+                }}
+            }});
             
             // Initialize Google Places Autocomplete
             initializePlacesAutocomplete();
