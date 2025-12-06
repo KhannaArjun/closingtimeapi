@@ -2515,6 +2515,43 @@ def get_all_recipients():
         return flask.jsonify(api_response.apiResponse(f"Failed to fetch recipients: {str(e)}", True, {}))
 
 
+@app.route('/admin/delete_recipient', methods=['DELETE'])
+@require_admin_token
+def delete_recipient():
+    """
+    Delete recipient
+    Requires admin authentication token
+    """
+    try:
+        input_data = request.get_json()
+        
+        if not input_data or 'recipient_id' not in input_data:
+            return flask.jsonify(api_response.apiResponse("recipient_id is required", True, {}))
+        
+        recipient_id = input_data['recipient_id']
+        recipient_reg = getCollectionName('recipient_registration')
+        
+        # Check if recipient exists
+        existing_recipient = recipient_reg.find_one({'_id': ObjectId(recipient_id)})
+        if not existing_recipient:
+            return flask.jsonify(api_response.apiResponse("Recipient not found", True, {}))
+        
+        # Delete the recipient
+        result = recipient_reg.delete_one({'_id': ObjectId(recipient_id)})
+        
+        if result.deleted_count > 0:
+            return flask.jsonify(api_response.apiResponse("Recipient deleted successfully", False, {
+                'recipient_id': recipient_id,
+                'deleted_at': datetime.now(pytz.UTC).isoformat()
+            }))
+        else:
+            return flask.jsonify(api_response.apiResponse("Failed to delete recipient", True, {}))
+    
+    except Exception as e:
+        print(f"Error deleting recipient: {str(e)}")
+        return flask.jsonify(api_response.apiResponse(f"Failed to delete recipient: {str(e)}", True, {}))
+
+
 @app.route('/admin/get_all_users_count', methods=['GET'])
 def get_all_users_count():
     # input = request.get_json()
