@@ -1418,7 +1418,6 @@ def collect_food():
     input = request.get_json()
     collect_food_col = getCollectionName('collect_food')
     add_food_col = getCollectionName('add_food')
-    user_firebase_token_col = getCollectionName('user_firebase_token')
 
     add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_item_id"])})
 
@@ -1431,14 +1430,104 @@ def collect_food():
             obj = add_food_col.update_one({'_id': ObjectId(input['food_item_id'])}, {
                 '$set': {'status': constants.Utils.pickeup_schedule}}, upsert=False)
             
-            # Notify donor that volunteer has accepted the pickup
-            donor_firebase_obj = user_firebase_token_col.find_one({"user_id": add_food_obj["user_id"]})
-            if donor_firebase_obj is not None and donor_firebase_obj.get('firebase_token'):
-                send_notification_to_donor(donor_firebase_obj['firebase_token'], add_food_obj.get('business_name', 'Business'))
+            # Send email notification to donor that volunteer has accepted the pickup
+            donor_email, donor_name = get_donor_email(add_food_obj["user_id"], add_food_obj)
+            if donor_email:
+                volunteer_registration_col = getCollectionName('volunteer_registration')
+                volunteer_obj = volunteer_registration_col.find_one({"_id": ObjectId(input.get('volunteer_user_id'))})
+                volunteer_name = volunteer_obj.get('name', 'A volunteer') if volunteer_obj else 'A volunteer'
+                
+                subject = f"Volunteer Accepted Your Food Donation - {add_food_obj.get('food_name', 'Food')}"
+                html_content = f"""
+                <html>
+                <body>
+                    <h2>✅ Volunteer Accepted Your Donation</h2>
+                    <p>Hello {donor_name},</p>
+                    <p>Great news! A volunteer has accepted your food donation and will pick it up soon.</p>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <h3>Donation Details:</h3>
+                        <ul>
+                            <li><strong>Food:</strong> {add_food_obj.get('food_name', 'N/A')}</li>
+                            <li><strong>Volunteer:</strong> {volunteer_name}</li>
+                            <li><strong>Pickup Date:</strong> {add_food_obj.get('pick_up_date', 'N/A')}</li>
+                            <li><strong>Pickup Time:</strong> {add_food_obj.get('pick_up_time', 'N/A')}</li>
+                            <li><strong>Location:</strong> {add_food_obj.get('pick_up_address', add_food_obj.get('address', 'N/A'))}</li>
+                        </ul>
+                    </div>
+                    
+                    <p>The volunteer will arrive at the scheduled time to collect the food. Please have it ready for pickup.</p>
+                    <p>Thank you for your contribution to reducing food waste!</p>
+                    <p>Best regards,<br>Closing Time Team</p>
+                </body>
+                </html>
+                """
+                send_donor_email_notification(donor_email, donor_name, subject, html_content)
         else:
             return flask.jsonify(api_response.apiResponse(constants.Utils.already_assigned, False, {}))
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {}))
+
+
+@app.route('/volunteer/mark_picked_up', methods=['POST'])
+def volunteer_mark_picked_up():
+    """Endpoint for volunteer to mark food as collected/picked up from donor"""
+    input = request.get_json()
+    add_food_col = getCollectionName('add_food')
+
+    add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_item_id"])})
+
+    if add_food_obj is not None:
+        # Validate that food is in "Pick up scheduled" status
+        if add_food_obj['status'] not in [constants.Utils.pickeup_schedule, constants.Utils.waiting_for_volunteer]:
+            return flask.jsonify(api_response.apiResponse("Food must be in 'Pick up scheduled' status before marking as collected", True, {
+                'message': 'Food must be in "Pick up scheduled" status before marking as collected'
+            }))
+        
+        # Update status to collected
+        add_food_col.update_one({
+            '_id': ObjectId(input['food_item_id'])
+        }, {
+            '$set': {
+                'status': constants.Utils.collected,
+                'picked_up_at': datetime.now().isoformat()
+            }
+        }, upsert=False)
+        
+        # Send email notification to donor that food has been collected
+        donor_email, donor_name = get_donor_email(add_food_obj["user_id"], add_food_obj)
+        if donor_email:
+            subject = f"Food Collected - {add_food_obj.get('food_name', 'Your Donation')}"
+            html_content = f"""
+            <html>
+            <body>
+                <h2>📦 Food Collected!</h2>
+                <p>Hello {donor_name},</p>
+                <p>The volunteer has successfully collected your food donation. It is now on its way to the recipient.</p>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h3>Collection Details:</h3>
+                    <ul>
+                        <li><strong>Food:</strong> {add_food_obj.get('food_name', 'N/A')}</li>
+                        <li><strong>Collected At:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
+                        <li><strong>Status:</strong> Collected - On the way to recipient</li>
+                    </ul>
+                </div>
+                
+                <p>Thank you for your donation! The food will be delivered to a shelter soon.</p>
+                <p>Best regards,<br>Closing Time Team</p>
+            </body>
+            </html>
+            """
+            send_donor_email_notification(donor_email, donor_name, subject, html_content)
+        
+        return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {
+            'message': 'Food marked as collected successfully'
+        }))
+    else:
+        return flask.jsonify(api_response.apiResponse(constants.Utils.no_user_found, False, {
+            'message': 'Food item not found'
+        }))
 
 
 @app.route('/volunteer/mark_delivered', methods=['POST'])
@@ -1446,11 +1535,16 @@ def volunteer_mark_delivered():
     """Endpoint for volunteer to mark food as delivered to shelter"""
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
-    user_firebase_token_col = getCollectionName('user_firebase_token')
 
     add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_item_id"])})
 
     if add_food_obj is not None:
+        # Validate that food is in "Collected food" status
+        if add_food_obj['status'] not in [constants.Utils.collected, constants.Utils.pickeup_schedule]:
+            return flask.jsonify(api_response.apiResponse("Food must be in 'Collected food' status before marking as delivered", True, {
+                'message': 'Food must be in "Collected food" status before marking as delivered'
+            }))
+        
         # Update status to delivered
         add_food_col.update_one({
             '_id': ObjectId(input['food_item_id'])
@@ -1461,22 +1555,32 @@ def volunteer_mark_delivered():
             }
         }, upsert=False)
         
-        # Notify donor that food has been delivered
-        donor_firebase_obj = user_firebase_token_col.find_one({"user_id": add_food_obj["user_id"]})
-        if donor_firebase_obj is not None and donor_firebase_obj.get('firebase_token'):
-            try:
-                notification = messaging.Notification(
-                    title="Food Delivered!",
-                    body=f"Your donation has been delivered to a shelter. Thank you for your contribution!"
-                )
-                message = messaging.Message(
-                    notification=notification,
-                    token=donor_firebase_obj['firebase_token']
-                )
-                messaging.send(message)
-                print(f"✅ Delivered notification sent to donor")
-            except Exception as e:
-                print(f"❌ Failed to send delivered notification to donor: {e}")
+        # Send email notification to donor that food has been delivered
+        donor_email, donor_name = get_donor_email(add_food_obj["user_id"], add_food_obj)
+        if donor_email:
+            subject = f"Food Delivered! - {add_food_obj.get('food_name', 'Your Donation')}"
+            html_content = f"""
+            <html>
+            <body>
+                <h2>🎉 Food Successfully Delivered!</h2>
+                <p>Hello {donor_name},</p>
+                <p>Your food donation has been successfully delivered to a shelter. Thank you for your contribution to reducing food waste!</p>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h3>Delivery Details:</h3>
+                    <ul>
+                        <li><strong>Food:</strong> {add_food_obj.get('food_name', 'N/A')}</li>
+                        <li><strong>Delivered At:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
+                        <li><strong>Status:</strong> Delivered to shelter</li>
+                    </ul>
+                </div>
+                
+                <p>Your donation has made a positive impact in your community. We appreciate your generosity!</p>
+                <p>Best regards,<br>Closing Time Team</p>
+            </body>
+            </html>
+            """
+            send_donor_email_notification(donor_email, donor_name, subject, html_content)
         
         return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, {
             'message': 'Food marked as delivered successfully'
@@ -1624,6 +1728,79 @@ def send_notification_to_donor(token, recipient_name):
     except Exception as e:
         print(f"Firebase notification error: {e}")
         # Continue execution even if notifications fail
+
+
+def get_donor_email(user_id, food_donation_obj=None):
+    """Get donor email from user_id. Checks donor_registration, qr_business_registration, and food donation object."""
+    try:
+        donor_registration_col = getCollectionName('donor_registration')
+        business_registration_col = getCollectionName(constants.Utils.qr_business_collection)
+        
+        # First, check if business_email is directly in the food donation (for QR donations)
+        if food_donation_obj and food_donation_obj.get('business_email'):
+            donor_email = food_donation_obj.get('business_email')
+            donor_name = food_donation_obj.get('business_name', 'Business')
+            print(f"✅ Found donor email in food donation: {donor_email}")
+            return donor_email, donor_name
+        
+        # Try to find donor - could be in donor_registration (ObjectId) or qr_business_registration (UUID)
+        donor_obj = None
+        
+        # First, try as MongoDB ObjectId (for app-registered donors)
+        try:
+            if ObjectId.is_valid(user_id):
+                donor_obj = donor_registration_col.find_one({"_id": ObjectId(user_id)})
+                if donor_obj:
+                    print(f"✅ Found donor in donor_registration collection")
+        except Exception as e:
+            print(f"⚠️ Not a valid ObjectId: {e}")
+        
+        # If not found, try as business_id (UUID for QR-registered donors)
+        if donor_obj is None:
+            donor_obj = business_registration_col.find_one({"business_id": user_id})
+            if donor_obj:
+                print(f"✅ Found donor in QR business_registration collection")
+        
+        if donor_obj is not None:
+            donor_email = donor_obj.get('email') or donor_obj.get('business_email')
+            donor_name = donor_obj.get('name') or donor_obj.get('business_name', 'Business')
+            if donor_email:
+                print(f"✅ Found donor email: {donor_email}")
+                return donor_email, donor_name
+        
+        print(f"⚠️ Could not find donor email for user_id: {user_id}")
+        return None, None
+        
+    except Exception as e:
+        print(f"❌ Error getting donor email: {e}")
+        return None, None
+
+
+def send_donor_email_notification(donor_email, donor_name, subject, html_content):
+    """Send email notification to donor"""
+    try:
+        if not donor_email:
+            print(f"⚠️ No email provided for donor notification")
+            return False
+        
+        # Send email using Brevo API
+        success = send_email_via_brevo_api(
+            to_email=donor_email,
+            to_name=donor_name or 'Business',
+            subject=subject,
+            html_content=html_content
+        )
+        
+        if success:
+            print(f"✅ Donor email sent to: {donor_name} ({donor_email})")
+            return True
+        else:
+            print(f"❌ Failed to send donor email to: {donor_name} ({donor_email})")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error sending email to donor {donor_name}: {e}")
+        return False
 
 
 def dist(lat1, long1, lat2, long2):
