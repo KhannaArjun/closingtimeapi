@@ -2440,68 +2440,79 @@ def add_recipient():
         return flask.jsonify(api_response.apiResponse(f"Failed to add recipient: {str(e)}", True, {}))
 
 
-@app.route('/admin/get_all_recipients', methods=['POST'])
+@app.route('/admin/get_all_recipients', methods=['GET', 'POST'])
 @require_admin_token
 def get_all_recipients():
     """
-    Get all recipients within 10 miles radius of volunteer location
-    Returns list of recipients with user_id field, filtered by distance
+    Get all recipients, optionally filtered by 10 miles radius of volunteer location
+    Returns list of recipients with user_id field
     Requires admin authentication token
     
-    Payload:
-    {
-        "volunteer_id": "volunteer_user_id_here"
-    }
+    GET: ?volunteer_id=xxx (optional)
+    POST: {"volunteer_id": "xxx"} (optional)
+    If volunteer_id provided, filters by 10 miles radius. Otherwise returns all recipients.
     """
     try:
-        input_data = request.get_json()
-        
-        # Validate required fields
-        if not input_data or 'volunteer_id' not in input_data:
-            return flask.jsonify(api_response.apiResponse("volunteer_id is required", True, {}))
-        
-        # Get volunteer location from database
-        volunteer_reg = getCollectionName('volunteer_registration')
-        volunteer_obj = volunteer_reg.find_one({'_id': ObjectId(input_data['volunteer_id'])})
-        
-        if volunteer_obj is None:
-            return flask.jsonify(api_response.apiResponse("Volunteer not found", True, {}))
-        
-        if 'lat' not in volunteer_obj or 'lng' not in volunteer_obj:
-            return flask.jsonify(api_response.apiResponse("Volunteer location (lat/lng) not found", True, {}))
-        
-        volunteer_lat = float(volunteer_obj['lat'])
-        volunteer_lng = float(volunteer_obj['lng'])
-        radius_miles = 10  # 10 miles radius
+        # Support both GET (query params) and POST (JSON body)
+        volunteer_id = None
+        if request.method == 'GET':
+            volunteer_id = request.args.get('volunteer_id')
+        else:
+            input_data = request.get_json() or {}
+            volunteer_id = input_data.get('volunteer_id')
         
         recipient_reg = getCollectionName('recipient_registration')
         recipients = recipient_reg.find({})
         
         recipient_list = []
-        for recipient in recipients:
-            # Check if recipient has lat/lng
-            if 'lat' in recipient and 'lng' in recipient:
-                try:
-                    recipient_lat = float(recipient['lat'])
-                    recipient_lng = float(recipient['lng'])
-                    
-                    # Calculate distance
-                    distance = dist(volunteer_lat, volunteer_lng, recipient_lat, recipient_lng)
-                    
-                    # Only include recipients within 10 miles
-                    if distance <= radius_miles:
-                        recipient_data = dict(recipient)
-                        recipient_data['user_id'] = str(recipient_data['_id'])
-                        recipient_data.pop('_id', None)
-                        recipient_data['role'] = constants.Utils.recipient
-                        recipient_data['distance'] = round(distance, 2)  # Add distance in miles
-                        recipient_list.append(recipient_data)
-                except (ValueError, TypeError) as e:
-                    print(f"Error calculating distance for recipient {recipient.get('_id')}: {e}")
-                    continue
+        volunteer_lat = None
+        volunteer_lng = None
         
-        # Sort by distance (closest first)
-        recipient_list.sort(key=lambda x: x.get('distance', float('inf')))
+        # If volunteer_id provided, get volunteer location and filter by distance
+        if volunteer_id:
+            volunteer_reg = getCollectionName('volunteer_registration')
+            volunteer_obj = volunteer_reg.find_one({'_id': ObjectId(volunteer_id)})
+            
+            if volunteer_obj is None:
+                return flask.jsonify(api_response.apiResponse("Volunteer not found", True, {}))
+            
+            if 'lat' not in volunteer_obj or 'lng' not in volunteer_obj:
+                return flask.jsonify(api_response.apiResponse("Volunteer location (lat/lng) not found", True, {}))
+            
+            volunteer_lat = float(volunteer_obj['lat'])
+            volunteer_lng = float(volunteer_obj['lng'])
+            radius_miles = 10  # 10 miles radius
+        
+        for recipient in recipients:
+            recipient_data = dict(recipient)
+            recipient_data['user_id'] = str(recipient_data['_id'])
+            recipient_data.pop('_id', None)
+            recipient_data['role'] = constants.Utils.recipient
+            
+            # If volunteer_id provided, calculate distance and filter
+            if volunteer_id and volunteer_lat and volunteer_lng:
+                if 'lat' in recipient and 'lng' in recipient:
+                    try:
+                        recipient_lat = float(recipient['lat'])
+                        recipient_lng = float(recipient['lng'])
+                        
+                        # Calculate distance
+                        distance = dist(volunteer_lat, volunteer_lng, recipient_lat, recipient_lng)
+                        
+                        # Only include recipients within 10 miles
+                        if distance <= radius_miles:
+                            recipient_data['distance'] = round(distance, 2)  # Add distance in miles
+                            recipient_list.append(recipient_data)
+                    except (ValueError, TypeError) as e:
+                        print(f"Error calculating distance for recipient {recipient.get('_id')}: {e}")
+                        continue
+            else:
+                # No volunteer_id, return all recipients
+                recipient_list.append(recipient_data)
+        
+        # Sort by distance if volunteer_id provided (closest first)
+        if volunteer_id:
+            recipient_list.sort(key=lambda x: x.get('distance', float('inf')))
         
         data = {
             'total_count': len(recipient_list),
@@ -2513,6 +2524,60 @@ def get_all_recipients():
     except Exception as e:
         print(f"Error fetching all recipients: {str(e)}")
         return flask.jsonify(api_response.apiResponse(f"Failed to fetch recipients: {str(e)}", True, {}))
+
+
+@app.route('/admin/update_recipient', methods=['PUT'])
+@require_admin_token
+def update_recipient():
+    """
+    Update recipient information
+    Requires admin authentication token
+    """
+    try:
+        input_data = request.get_json()
+        
+        if not input_data or 'recipient_id' not in input_data:
+            return flask.jsonify(api_response.apiResponse("recipient_id is required", True, {}))
+        
+        recipient_id = input_data['recipient_id']
+        recipient_reg = getCollectionName('recipient_registration')
+        
+        # Check if recipient exists
+        existing_recipient = recipient_reg.find_one({'_id': ObjectId(recipient_id)})
+        if not existing_recipient:
+            return flask.jsonify(api_response.apiResponse("Recipient not found", True, {}))
+        
+        # Prepare update data (exclude recipient_id and _id)
+        update_data = {}
+        allowed_fields = ['name', 'contact_number', 'address', 'lat', 'lng', 'place_id']
+        
+        for field in allowed_fields:
+            if field in input_data:
+                update_data[field] = input_data[field]
+        
+        # Add updated timestamp
+        update_data['updated_at'] = datetime.now(pytz.UTC).isoformat()
+        
+        # Update the recipient
+        result = recipient_reg.update_one(
+            {'_id': ObjectId(recipient_id)},
+            {'$set': update_data}
+        )
+        
+        if result.modified_count > 0:
+            # Get updated recipient
+            updated_recipient = recipient_reg.find_one({'_id': ObjectId(recipient_id)})
+            updated_recipient['user_id'] = str(updated_recipient['_id'])
+            updated_recipient.pop('_id', None)
+            updated_recipient['role'] = constants.Utils.recipient
+            
+            return flask.jsonify(api_response.apiResponse("Recipient updated successfully", False, updated_recipient))
+        else:
+            return flask.jsonify(api_response.apiResponse("No changes made", True, {}))
+    
+    except Exception as e:
+        print(f"Error updating recipient: {str(e)}")
+        return flask.jsonify(api_response.apiResponse(f"Failed to update recipient: {str(e)}", True, {}))
 
 
 @app.route('/admin/delete_recipient', methods=['DELETE'])
