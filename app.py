@@ -1605,6 +1605,7 @@ def volunteer_mark_delivered():
         # Send email notification to donor that food has been delivered
         donor_email, donor_name = get_donor_email(add_food_obj["user_id"], add_food_obj)
         if donor_email:
+            recipient_name = recipient_obj.get('name', 'the shelter')
             subject = f"Food Delivered! - {add_food_obj.get('food_name', 'Your Donation')}"
             html_content = f"""
             <html>
@@ -1617,6 +1618,7 @@ def volunteer_mark_delivered():
                     <h3>Delivery Details:</h3>
                     <ul>
                         <li><strong>Food:</strong> {add_food_obj.get('food_name', 'N/A')}</li>
+                        <li><strong>Shelter:</strong> {recipient_name}</li>
                         <li><strong>Delivered At:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
                         <li><strong>Status:</strong> Delivered to shelter</li>
                     </ul>
