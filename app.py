@@ -3808,28 +3808,39 @@ def qr_scan_page():
         // Initialize form
         document.addEventListener('DOMContentLoaded', function() {{
             // Set date range: today to one week from today (disable previous dates)
+            // Use local time to avoid timezone issues
             const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${{year}}-${{month}}-${{day}}`;
             
             const oneWeekLater = new Date(today);
             oneWeekLater.setDate(oneWeekLater.getDate() + 7);
+            const maxYear = oneWeekLater.getFullYear();
+            const maxMonth = String(oneWeekLater.getMonth() + 1).padStart(2, '0');
+            const maxDay = String(oneWeekLater.getDate()).padStart(2, '0');
+            const maxDateStr = `${{maxYear}}-${{maxMonth}}-${{maxDay}}`;
             
             const dateInput = document.getElementById('pickup-date');
-            dateInput.min = todayStr;  // Set minimum to today (prevents previous dates)
-            dateInput.max = oneWeekLater.toISOString().split('T')[0];
-            
-            // Additional validation to prevent past dates
-            dateInput.addEventListener('change', function() {{
-                const selectedDate = new Date(this.value);
-                const todayDate = new Date();
-                todayDate.setHours(0, 0, 0, 0);
-                selectedDate.setHours(0, 0, 0, 0);
+            if (dateInput) {{
+                dateInput.setAttribute('min', todayStr);  // Set minimum to today (prevents previous dates)
+                dateInput.setAttribute('max', maxDateStr);
+                dateInput.min = todayStr;  // Also set property for compatibility
+                dateInput.max = maxDateStr;
                 
-                if (selectedDate < todayDate) {{
-                    alert('Cannot select a date in the past. Please select today or a future date.');
-                    this.value = todayStr;
-                }}
-            }});
+                // Additional validation to prevent past dates
+                dateInput.addEventListener('change', function() {{
+                    const selectedDate = new Date(this.value + 'T00:00:00');
+                    const todayDate = new Date();
+                    todayDate.setHours(0, 0, 0, 0);
+                    
+                    if (selectedDate < todayDate) {{
+                        alert('Cannot select a date in the past. Please select today or a future date.');
+                        this.value = todayStr;
+                    }}
+                }});
+            }}
             
             // Initialize Google Places Autocomplete
             initializePlacesAutocomplete();
