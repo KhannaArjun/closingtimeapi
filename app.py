@@ -1474,10 +1474,27 @@ def volunteer_mark_picked_up():
     """Endpoint for volunteer to mark food as collected/picked up from donor"""
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
+    collect_food_col = getCollectionName('collect_food')
 
     add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_item_id"])})
 
     if add_food_obj is not None:
+        # Validate volunteer_user_id is provided
+        if 'volunteer_user_id' not in input:
+            return flask.jsonify(api_response.apiResponse("volunteer_user_id is required", True, {
+                'message': 'volunteer_user_id is required'
+            }))
+        
+        # Validate that the volunteer who collected the food is the one marking it as picked up
+        collect_food_obj = collect_food_col.find_one({
+            'food_item_id': input['food_item_id'],
+            'volunteer_user_id': str(input['volunteer_user_id'])
+        })
+        if collect_food_obj is None:
+            return flask.jsonify(api_response.apiResponse("You can only mark food as picked up if you collected it", True, {
+                'message': 'You can only mark food as picked up if you collected it'
+            }))
+        
         # Validate that food is in "Pick up scheduled" status
         if add_food_obj['status'] not in [constants.Utils.pickeup_schedule, constants.Utils.waiting_for_volunteer]:
             return flask.jsonify(api_response.apiResponse("Food must be in 'Pick up scheduled' status before marking as collected", True, {
@@ -1535,10 +1552,27 @@ def volunteer_mark_delivered():
     """Endpoint for volunteer to mark food as delivered to shelter"""
     input = request.get_json()
     add_food_col = getCollectionName('add_food')
+    collect_food_col = getCollectionName('collect_food')
 
     add_food_obj = add_food_col.find_one({"_id": ObjectId(input["food_item_id"])})
 
     if add_food_obj is not None:
+        # Validate volunteer_user_id is provided
+        if 'volunteer_user_id' not in input:
+            return flask.jsonify(api_response.apiResponse("volunteer_user_id is required", True, {
+                'message': 'volunteer_user_id is required'
+            }))
+        
+        # Validate that the volunteer who collected the food is the one marking it as delivered
+        collect_food_obj = collect_food_col.find_one({
+            'food_item_id': input['food_item_id'],
+            'volunteer_user_id': str(input['volunteer_user_id'])
+        })
+        if collect_food_obj is None:
+            return flask.jsonify(api_response.apiResponse("You can only mark food as delivered if you collected it", True, {
+                'message': 'You can only mark food as delivered if you collected it'
+            }))
+        
         # Validate that food is in "Collected food" status
         if add_food_obj['status'] not in [constants.Utils.collected, constants.Utils.pickeup_schedule]:
             return flask.jsonify(api_response.apiResponse("Food must be in 'Collected food' status before marking as delivered", True, {
@@ -1638,6 +1672,8 @@ def getAllFoodsByVolunteer():
                 final_food_list.append(obj)
 
     return flask.jsonify(api_response.apiResponse(constants.Utils.success, False, final_food_list))
+
+
 
 
 @app.route('/logout', methods=['POST'])
@@ -2441,16 +2477,14 @@ def add_recipient():
 
 
 @app.route('/admin/get_all_recipients', methods=['GET', 'POST'])
-@require_admin_token
 def get_all_recipients():
     """
-    Get all recipients, optionally filtered by 10 miles radius of volunteer location
+    Get recipients - filtered by 10 miles radius if volunteer_id provided, otherwise all recipients
     Returns list of recipients with user_id field
-    Requires admin authentication token
     
     GET: ?volunteer_id=xxx (optional)
     POST: {"volunteer_id": "xxx"} (optional)
-    If volunteer_id provided, filters by 10 miles radius. Otherwise returns all recipients.
+    If volunteer_id provided, filters recipients within 10 miles radius. Otherwise returns all recipients.
     """
     try:
         # Support both GET (query params) and POST (JSON body)
