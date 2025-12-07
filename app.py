@@ -1606,6 +1606,16 @@ def volunteer_mark_delivered():
         donor_email, donor_name = get_donor_email(add_food_obj["user_id"], add_food_obj)
         if donor_email:
             recipient_name = recipient_obj.get('name', 'the shelter')
+            recipient_address = recipient_obj.get('address', 'N/A')
+            
+            # Get volunteer name
+            volunteer_name = 'Volunteer'
+            if 'volunteer_user_id' in input:
+                volunteer_reg = getCollectionName('volunteer_registration')
+                volunteer_obj = volunteer_reg.find_one({'_id': ObjectId(input['volunteer_user_id'])})
+                if volunteer_obj and 'name' in volunteer_obj:
+                    volunteer_name = volunteer_obj['name']
+            
             subject = f"Food Delivered! - {add_food_obj.get('food_name', 'Your Donation')}"
             html_content = f"""
             <html>
@@ -1619,6 +1629,8 @@ def volunteer_mark_delivered():
                     <ul>
                         <li><strong>Food:</strong> {add_food_obj.get('food_name', 'N/A')}</li>
                         <li><strong>Shelter:</strong> {recipient_name}</li>
+                        <li><strong>Shelter Location:</strong> {recipient_address}</li>
+                        <li><strong>Delivered By:</strong> {volunteer_name}</li>
                         <li><strong>Delivered At:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
                         <li><strong>Status:</strong> Delivered to shelter</li>
                     </ul>
