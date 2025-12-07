@@ -1425,23 +1425,10 @@ def collect_food():
 
         # Volunteer can collect food that is available or waiting for volunteer
         if add_food_obj['status'] in [constants.Utils.available, constants.Utils.waiting_for_volunteer]:
-            
-            # Validate recipient_id is provided
-            if 'recipient_id' not in input:
-                return flask.jsonify(api_response.apiResponse("recipient_id is required", True, {}))
-            
-            # Verify recipient exists
-            recipient_reg = getCollectionName('recipient_registration')
-            recipient_obj = recipient_reg.find_one({'_id': ObjectId(input['recipient_id'])})
-            if recipient_obj is None:
-                return flask.jsonify(api_response.apiResponse("Recipient not found", True, {}))
 
             id = collect_food_col.insert_one(input).inserted_id
             obj = add_food_col.update_one({'_id': ObjectId(input['food_item_id'])}, {
-                '$set': {
-                    'status': constants.Utils.pickeup_schedule,
-                    'recipient_id': input['recipient_id']
-                }}, upsert=False)
+                '$set': {'status': constants.Utils.pickeup_schedule}}, upsert=False)
             
             # Send email notification to donor that volunteer has accepted the pickup
             donor_email, donor_name = get_donor_email(add_food_obj["user_id"], add_food_obj)
@@ -1558,13 +1545,26 @@ def volunteer_mark_delivered():
                 'message': 'Food must be in "Collected food" status before marking as delivered'
             }))
         
-        # Update status to delivered
+        # Validate recipient_id is provided
+        if 'recipient_id' not in input:
+            return flask.jsonify(api_response.apiResponse("recipient_id is required", True, {
+                'message': 'recipient_id is required when marking as delivered'
+            }))
+        
+        # Verify recipient exists
+        recipient_reg = getCollectionName('recipient_registration')
+        recipient_obj = recipient_reg.find_one({'_id': ObjectId(input['recipient_id'])})
+        if recipient_obj is None:
+            return flask.jsonify(api_response.apiResponse("Recipient not found", True, {}))
+        
+        # Update status to delivered and store recipient_id
         add_food_col.update_one({
             '_id': ObjectId(input['food_item_id'])
         }, {
             '$set': {
                 'status': constants.Utils.delivered,
-                'delivered_at': datetime.now().isoformat()
+                'delivered_at': datetime.now().isoformat(),
+                'recipient_id': input['recipient_id']
             }
         }, upsert=False)
         
@@ -3643,17 +3643,19 @@ def qr_scan_page():
             transform: translateY(-1px); 
         }}
         .btn-success {{ 
-            background: #ffb366; 
+            background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%); 
             color: white; 
             width: 100%; 
             margin-top: 25px; 
             padding: 16px 24px; 
             font-size: 17px; 
+            box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4); 
+            font-weight: 700; 
         }}
         .btn-success:hover {{ 
-            background: #ff9500; 
+            background: linear-gradient(135deg, #ffbb00 0%, #ff9900 100%); 
             transform: translateY(-2px); 
-            box-shadow: 0 6px 20px rgba(255, 149, 0, 0.3); 
+            box-shadow: 0 6px 20px rgba(255, 170, 0, 0.5); 
         }}
         .btn-success:disabled {{ 
             background: #ccc; 

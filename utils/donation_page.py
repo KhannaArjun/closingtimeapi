@@ -184,17 +184,19 @@ def get_food_donate_template(business_data, token):
                 transform: translateY(-1px); 
             }}
             .btn-success {{ 
-                background: #ff9500; 
+                background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%); 
                 color: white; 
                 width: 100%; 
                 margin-top: 25px; 
                 padding: 16px 24px; 
                 font-size: 17px; 
+                box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4); 
+                font-weight: 700; 
             }}
             .btn-success:hover {{ 
-                background: #e8850e; 
+                background: linear-gradient(135deg, #ffbb00 0%, #ff9900 100%); 
                 transform: translateY(-2px); 
-                box-shadow: 0 6px 20px rgba(255, 149, 0, 0.3); 
+                box-shadow: 0 6px 20px rgba(255, 170, 0, 0.5); 
             }}
             .btn-success:disabled {{ 
                 background: #ccc; 

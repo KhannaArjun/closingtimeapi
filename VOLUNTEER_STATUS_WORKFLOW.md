@@ -6,10 +6,7 @@ All status constants are defined in `utils/constants.py`:
 
 | Status | Constant | Description |
 |--------|----------|-------------|
-| **Available** | `constants.Utils.available` | Initial status when food donation is first created. Food is available for volunteers to accept. |
-| **Pick up scheduled** | `constants.Utils.pickeup_schedule` | Volunteer has accepted/committed to pick up this food. Donor is notified. Food is scheduled for pickup. |
-| **Collected food** | `constants.Utils.collected` | Volunteer has physically collected food from donor location. Food is now with volunteer, on the way to recipient. |
-| **Delivered** | `constants.Utils.delivered` | Food successfully delivered to recipient/shelter. Final status. |
+|x
 | **Expired** | `constants.Utils.expired` | Defined but currently not actively used |
 | **Already assigned** | `constants.Utils.already_assigned` | Error message when food is already assigned to another volunteer |
 
